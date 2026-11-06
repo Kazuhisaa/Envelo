@@ -203,7 +203,21 @@ To start the demo from zero: truncate the app tables (`TRUNCATE remittances, dec
 
 ## Screenshots
 
-_TBD_
+**Dashboard at the start of a period**: client payments received, XLM sealed on-chain in the envelopes (read live from Noir), one card per agency with its contribution rule and deadline.
+
+![Dashboard, new period](docs/screenshots/dashboard-new-period.jpg)
+
+**New invoice**: the freelancer enters the amount in pesos; the page shows what the client pays in XLM and what would be set aside for each agency.
+
+![New invoice](docs/screenshots/new-invoice.jpg)
+
+**The agent pays through Noir**: the agent key `GCVX…LNY6` invokes `authorize` on Noir's `payment_escrow` contract `CC7E…5BFS` (PhilHealth remittance, 388,333,333 stroops = 38.83 XLM).
+
+![Agent authorize on the Noir payment_escrow contract](docs/screenshots/agent-authorize-noir.jpg)
+
+**The mock agency collects**: PhilHealth's account `GAY3…IKWK` invokes `claim` on the same contract.
+
+![Mock agency claim on the Noir payment_escrow contract](docs/screenshots/agency-claim-noir.jpg)
 
 ## What's next
 
