@@ -51,7 +51,8 @@ docs/             Spec, ADRs, mockups
 1. Prerequisites: Node 22.23.4+ (`nvm use` reads `.nvmrc`), corepack (`corepack enable pnpm`), a Postgres database.
 2. `pnpm install` at the root.
 3. Copy `.env.example` to `.env` and fill it in (at least `DATABASE_URL` and `DEMO_PASSCODE`).
-4. `pnpm dev`: web on http://localhost:3000, server on http://localhost:8787.
+4. `pnpm setup:testnet`: creates and Friendbot-funds the owner, agent and three mock agency accounts (secrets are written to `.env`), registers the three envelopes (Noir devices) with their agent policies, and registers the expired demo envelope (its policy lapses two minutes after the first run). Safe to run again: it reuses keys and skips what is already registered. After a Testnet reset, clear the five `*_SECRET` values in `.env` and run it again. The first run takes a few minutes.
+5. `pnpm dev`: web on http://localhost:3000, server on http://localhost:8787.
 
 `pnpm test`, `pnpm lint` and `pnpm build` run across every package.
 
