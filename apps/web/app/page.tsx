@@ -80,6 +80,7 @@ function DashboardContent() {
       reason: d.reason,
       txHash: claim ? shortHash(claim) : undefined,
       rawTxHash: claim ?? null,
+      sponsoredFee: null as string | null,
       isNow: false,
     }
   })
@@ -107,6 +108,8 @@ function DashboardContent() {
         ? `${e.latest!.txHash.slice(0, 4)}…${e.latest!.txHash.slice(-3)}`
         : undefined,
       rawTxHash: e.latest!.txHash,
+      // Gas Station returns an outer fee-bump hash; direct submission doesn't.
+      sponsoredFee: e.latest!.outerTxHash ? (e.latest!.actualFeeStroops ?? '0') : null,
       isNow: true,
     }))
 
@@ -223,6 +226,11 @@ function DashboardContent() {
                       )}
                     </div>
                     <span className="tag">{note.tag}</span>
+                    {note.sponsoredFee !== null && (
+                      <span className="tag" title={`Fee sponsored by Velo Gas Station (actual fee: ${note.sponsoredFee} stroops)`}>
+                        Sponsored by Velo Gas
+                      </span>
+                    )}
                     <p>{note.reason}</p>
                   </div>
                 ))

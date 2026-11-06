@@ -36,6 +36,8 @@ export type Envelope = {
     status: 'funded' | 'failed' | 'refused'
     amountCentavos: number
     txHash: string | null
+    outerTxHash?: string | null
+    actualFeeStroops?: string | null
     reason: string
     error: string | null
     clientPaymentId: string
