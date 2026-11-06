@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest'
 import {
   contributionFor,
+  contributionRule,
   contributionsFor,
+  formatPeso,
   deadlineFor,
   periodOf,
   phpToStroops,
@@ -100,4 +102,11 @@ describe('PHP ↔ stroops', () => {
     expect(() => phpToStroops(100, 'abc')).toThrow()
     expect(() => phpToStroops(100, '0')).toThrow()
   })
+})
+
+test('reasons read like the spec', () => {
+  expect(contributionRule('sss', php(25_000))).toBe('15% of your ₱25,000 MSC plus ₱30 EC')
+  expect(contributionRule('philhealth', php(3_000))).toBe('5% of your ₱3,000 income (counted as ₱10,000, within ₱10,000–₱100,000)')
+  expect(contributionRule('pagibig', php(25_000))).toBe('4% of your income, counted up to ₱10,000')
+  expect(formatPeso(6_125)).toBe('₱61.25')
 })

@@ -23,6 +23,30 @@ export function contributionFor(agency: Agency, incomeCentavos: number): number 
   }
 }
 
+/** ₱3,780 or ₱61.25: whole pesos without decimals. */
+export function formatPeso(centavos: number): string {
+  const whole = centavos % 100 === 0
+  return `₱${(centavos / 100).toLocaleString('en-PH', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 })}`
+}
+
+/** The rule behind an agency's contribution, in words the freelancer can read. */
+export function contributionRule(agency: Agency, incomeCentavos: number): string {
+  switch (agency) {
+    case 'sss': {
+      const msc = sssMsc(incomeCentavos)
+      const ec = msc < SSS.ecThreshold ? SSS.ecLow : SSS.ecHigh
+      return `${SSS.rateBps / 100}% of your ${formatPeso(msc)} MSC plus ${formatPeso(ec)} EC`
+    }
+    case 'philhealth': {
+      const base = clamp(incomeCentavos, PHILHEALTH.incomeFloor, PHILHEALTH.incomeCeiling)
+      const note = base === incomeCentavos ? '' : ` (counted as ${formatPeso(base)}, within ${formatPeso(PHILHEALTH.incomeFloor)}–${formatPeso(PHILHEALTH.incomeCeiling)})`
+      return `${PHILHEALTH.rateBps / 100}% of your ${formatPeso(incomeCentavos)} income${note}`
+    }
+    case 'pagibig':
+      return `${PAGIBIG.rateBps / 100}% of your income, counted up to ${formatPeso(PAGIBIG.incomeCeiling)}`
+  }
+}
+
 export function contributionsFor(incomeCentavos: number): Record<Agency, number> {
   return {
     sss: contributionFor('sss', incomeCentavos),
