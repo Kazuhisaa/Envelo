@@ -36,7 +36,7 @@ const reads = { balance: (a: Parameters<typeof envelopeHash>[0]) => cachedBalanc
 const app = createApp(dbOk)
   .route('/', veloRoutes)
   .route('/', setAsideRoutes(chain, reads))
-  .route('/', agentRoutes())
+  .route('/', agentRoutes({ backgroundClaim: true }))
   .route('/', refusalRoutes())
 
 // Daily cron (bonus): runs one tick daily with the real clock
@@ -44,7 +44,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000
 setInterval(async () => {
   try {
     console.log('Daily cron: running remittance tick with real clock…')
-    await tickAll()
+    await tickAll({ backgroundClaim: true })
   } catch (err) {
     console.error('Daily cron remittance tick error:', err)
   }

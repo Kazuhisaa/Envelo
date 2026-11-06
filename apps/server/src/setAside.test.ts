@@ -47,11 +47,12 @@ describe.skipIf(!url)('set-aside orchestration (Noir faked)', () => {
     await sql`truncate set_asides, client_payments, invoices restart identity cascade`
   })
 
-  test('a ₱25,000 client payment funds 3,780 / 1,250 / 400 and caps each envelope at its contribution', async () => {
+  test('a ₱25,000 client payment funds 3,780 / 1,250 / 400 and caps each envelope at the legal maximum', async () => {
     const calls: Call[] = []
     await runSetAside(await clientPayment(25_000), fakeChain(calls))
     expect(funds(calls)).toEqual({ sss: xlm(3_780), philhealth: xlm(1_250), pagibig: xlm(400) })
-    expect(calls.filter((c) => c.kind === 'cap').map((c) => c.stroops)).toEqual([xlm(3_780), xlm(1_250), xlm(400)])
+    // Cap = legal maximum per period: SSS 15% of the ₱35,000 MSC + ₱30 EC, PhilHealth 5% of the ₱100,000 ceiling, Pag-IBIG ₱400.
+    expect(calls.filter((c) => c.kind === 'cap').map((c) => c.stroops)).toEqual([xlm(5_280), xlm(5_000), xlm(400)])
     const [sss] = await sql`select reason from set_asides where agency = 'sss'`
     expect(sss.reason).toBe("Set aside ₱3,780 for SSS toward this period's ₱3,780: 15% of your ₱25,000 MSC plus ₱30 EC.")
   })
