@@ -1,3 +1,9 @@
 CLAUDE.md
 docs/agents/
 .impeccable/
+node_modules/
+.env
+.next/
+next-env.d.ts
+*.tsbuildinfo
+apps/web/AGENTS.md

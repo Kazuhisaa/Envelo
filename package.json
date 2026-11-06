@@ -1,0 +1,20 @@
+{
+  "name": "envelo",
+  "private": true,
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": "^22.23.4"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @envelo/server --filter @envelo/web dev",
+    "build": "pnpm -r build",
+    "start": "pnpm --filter @envelo/server start",
+    "test": "vitest run",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.0"
+  }
+}
