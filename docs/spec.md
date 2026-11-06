@@ -33,11 +33,11 @@ pnpm monorepo:
 | --- | --- | --- |
 | `apps/web` | Next.js, mobile-first dashboard | Vercel |
 | `apps/server` | Node HTTP server: Velo webhook, Noir calls, agent loop, cron | Render or Railway (long-running process) |
-| `packages/agent` | Agent decision logic (rules + Claude) | library |
+| `packages/agent` | Agent decision logic (rules + Gemini) | library |
 | `packages/shared` | Contribution rules, agency config, shared types | library |
 
 - App records (client payments, set-asides, decisions, remittances/receipts) live in one hosted Postgres (Neon or Render free tier). Chain state (escrow balances, policies) is always read from Noir, never cached as truth.
-- All secrets live in the server `.env` only: owner key, agent key, three agency keys, `VELO_API_KEY`, `VELO_WEBHOOK_SECRET`, `ANTHROPIC_API_KEY`, `DEMO_PASSCODE`, database URL. Commit `.env.example`, never `.env`.
+- All secrets live in the server `.env` only: owner key, agent key, three agency keys, `VELO_API_KEY`, `VELO_WEBHOOK_SECRET`, `GEMINI_API_KEY`, `DEMO_PASSCODE`, database URL. Commit `.env.example`, never `.env`.
 - Every write route (create invoice, fast-forward, refusal demos) requires the `DEMO_PASSCODE`. Read routes and the dashboard are public.
 - Node version: `@noirx402/agent-sdk` requires Node 22.23.4+ (or 24.22.1+); `@carts1024/velo-sdk` requires 22.6+. Pin a Node version both hosts support.
 
@@ -132,13 +132,13 @@ Three layers:
 | Layer | Decides | Example |
 | --- | --- | --- |
 | Hard rules (code) | What must always hold | No remittance after the deadline; **one remittance per agency per period**; never remit more than the computed contribution |
-| AI (Claude, `claude-sonnet-5-5`) | Gray areas, always with a reason | When to remit (`pay` / `wait` / `ask_user`); which envelope first when money is short |
+| AI (Gemini, `gemini-2.5-flash`) | Gray areas, always with a reason | When to remit (`pay` / `wait` / `ask_user`); which envelope first when money is short |
 | Contract (Noir) | Last line of defence | `checkPayment` / `authorizePayment` refuse `over_limit`, `expired`, `insufficient_escrow` even if the AI said pay |
 
 - The LLM returns structured JSON, e.g. `{ "action": "pay" | "wait" | "ask_user", "amount": "<PHP>", "reason": "<one sentence for the freelancer>" }`. Validate it with a schema and the hard rules before any chain call.
 - If the LLM call fails or returns invalid output, fall back to a deterministic rule (pay when the envelope is full and the deadline is ≤ 2 days away, otherwise wait) and say so in the reason.
 - Every decision is stored and shown to the freelancer with its reason, e.g. "2 days before the deadline and the envelope is full, so I paid it."
-- No agent framework; one Claude API call per decision.
+- No agent framework; one Gemini API call per decision.
 
 Main loop:
 

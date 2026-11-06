@@ -2,12 +2,15 @@ import { AGENCIES, AGENCY_LABEL, type Agency } from '@envelo/shared'
 import type { PrioritizeInput, PrioritizeResult } from './prioritize/types.ts'
 import { SYSTEM_PROMPT, buildUserPrompt } from './prioritize/prompt.ts'
 import { validateAllocation } from './prioritize/schema.ts'
-import { defaultClaudeClient, type ClaudeClient } from './prioritize/claude.ts'
+import { geminiJson, geminiModel } from './gemini.ts'
 
 export * from './prioritize/types.ts'
 export * from './prioritize/schema.ts'
 export * from './prioritize/prompt.ts'
-export * from './prioritize/claude.ts'
+export { geminiModel } from './gemini.ts'
+
+/** Model seam (faked in tests): returns the model's raw JSON text. */
+export type ModelClient = typeof geminiJson
 
 /** Split `available` in proportion to `needed`, never above a need. Total ≤ available. */
 export function proportionalSplit(availableCentavos: number, needed: Record<Agency, number>): Record<Agency, number> {
@@ -19,7 +22,7 @@ export function proportionalSplit(availableCentavos: number, needed: Record<Agen
 }
 
 export type PrioritizeDeps = {
-  client?: ClaudeClient
+  client?: ModelClient
   apiKey?: string
   timeoutMs?: number
 }
@@ -34,26 +37,26 @@ function fallbackResult(input: PrioritizeInput, reasonSuffix: string): Prioritiz
 
 /**
  * Prioritize set-asides when a client payment cannot cover every needed set-aside.
- * Queries Claude Sonnet 5.5 for a structured allocation.
+ * Asks Gemini for a structured JSON allocation.
  * If the API call fails, times out, or returns an invalid allocation, falls back to proportional split.
  */
 export async function prioritizeSetAsides(
   input: PrioritizeInput,
   deps: PrioritizeDeps = {},
 ): Promise<PrioritizeResult> {
-  const apiKey = deps.apiKey ?? process.env.ANTHROPIC_API_KEY
+  const apiKey = deps.apiKey ?? process.env.GEMINI_API_KEY
   if (!apiKey) {
-    return fallbackResult(input, 'the Claude API key is not configured.')
+    return fallbackResult(input, 'the Gemini API key is not configured.')
   }
 
-  const client = deps.client ?? defaultClaudeClient
+  const client = deps.client ?? geminiJson
   const timeoutMs = deps.timeoutMs ?? 10_000
 
   try {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
 
-    let raw: unknown
+    let raw: string
     try {
       raw = await client({
         system: SYSTEM_PROMPT,
@@ -65,7 +68,7 @@ export async function prioritizeSetAsides(
       clearTimeout(timer)
     }
 
-    const validated = validateAllocation(raw, input)
+    const validated = validateAllocation(JSON.parse(raw), input)
     if (!validated.ok) {
       console.warn(`[agent] Allocation validation failed: ${validated.cause}`)
       return fallbackResult(input, 'the suggested allocation was invalid.')
@@ -74,7 +77,7 @@ export async function prioritizeSetAsides(
     return {
       amounts: validated.amounts,
       reason: validated.reason,
-      source: 'claude',
+      source: 'model',
     }
   } catch (err: unknown) {
     const isAbort =
@@ -85,7 +88,7 @@ export async function prioritizeSetAsides(
       return fallbackResult(input, 'the AI decision timed out.')
     }
 
-    console.warn('[agent] Error during Claude prioritization:', err)
+    console.warn('[agent] Error during Gemini prioritization:', err)
     return fallbackResult(input, 'the AI service encountered an error.')
   }
 }
@@ -115,14 +118,14 @@ export type RemittanceDecision = {
   action: RemittanceAction
   amount: bigint
   reason: string
-  model: 'claude-sonnet-5-5' | 'fallback' | string
+  model: string
 }
 
-export type ClaudeCaller = (prompt: string, system: string) => Promise<string>
+export type ModelCaller = (prompt: string, system: string) => Promise<string>
 
 export type DecideOptions = {
   apiKey?: string
-  caller?: ClaudeCaller
+  caller?: ModelCaller
   model?: string
 }
 
@@ -243,8 +246,8 @@ You MUST respond with valid JSON only in this exact schema, with no markdown for
 }`
 
 export async function decideRemittance(facts: RemittanceFacts, options?: DecideOptions): Promise<RemittanceDecision> {
-  const modelName = options?.model ?? process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5-5'
-  const apiKey = options?.apiKey ?? process.env.ANTHROPIC_API_KEY
+  const modelName = options?.model ?? geminiModel()
+  const apiKey = options?.apiKey ?? process.env.GEMINI_API_KEY
 
   const userPrompt = JSON.stringify({
     agency: facts.agency,
@@ -270,28 +273,7 @@ export async function decideRemittance(facts: RemittanceFacts, options?: DecideO
         return fallbackDecision(facts)
       }
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: modelName,
-          max_tokens: 300,
-          system: REMITTANCE_SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: userPrompt }],
-        }),
-      })
-
-      if (!res.ok) {
-        console.warn(`Claude API call failed with status ${res.status}: ${await res.text()}`)
-        return fallbackDecision(facts)
-      }
-
-      const body = (await res.json()) as { content?: { type: string; text: string }[] }
-      rawResponse = body.content?.find((c) => c.type === 'text')?.text ?? ''
+      rawResponse = await geminiJson({ system: REMITTANCE_SYSTEM_PROMPT, user: userPrompt, apiKey })
     }
 
     // Clean JSON string (remove markdown code fences if present)

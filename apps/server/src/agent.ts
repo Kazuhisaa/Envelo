@@ -15,7 +15,7 @@ import {
 import {
   applyHardRules,
   decideRemittance,
-  type ClaudeCaller,
+  type ModelCaller,
   type RemittanceFacts,
   type RemittanceDecision,
 } from '@envelo/agent'
@@ -70,7 +70,7 @@ export type EnvelopeReads = {
 export type TickEnvOptions = {
   chain?: RemittanceChain
   reads?: EnvelopeReads
-  claudeCaller?: ClaudeCaller
+  modelCaller?: ModelCaller
   agentSecret?: string
   db?: typeof sql
   period?: Period
@@ -171,8 +171,8 @@ export async function tickEnvelope(agency: Agency, options?: TickEnvOptions) {
   const database = options?.db ?? sql
   const agentSec = options?.agentSecret ?? process.env.AGENT_SECRET
 
-  // 1. Decision layer (Claude + fallback)
-  const rawDecision = await decideRemittance(facts, { caller: options?.claudeCaller })
+  // 1. Decision layer (Gemini + fallback)
+  const rawDecision = await decideRemittance(facts, { caller: options?.modelCaller })
 
   // 2. Hard rules check (code, after AI, before chain)
   const { decision: hardDecision, blocked, rule } = applyHardRules(rawDecision, facts)
