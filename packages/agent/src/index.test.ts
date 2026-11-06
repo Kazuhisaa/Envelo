@@ -89,30 +89,30 @@ describe('validateAllocation', () => {
 })
 
 describe('prioritizeSetAsides', () => {
-  test('applies valid Claude allocation when client succeeds', async () => {
-    const fakeClient = vi.fn().mockResolvedValue({
+  test('applies valid the model allocation when client succeeds', async () => {
+    const fakeClient = vi.fn().mockResolvedValue(JSON.stringify({
       sss: 38_000,
       philhealth: 50_000,
       pagibig: 12_000,
       reason: 'PhilHealth has the earliest deadline on Nov 30, so I filled it and Pag-IBIG first.',
-    })
+    }))
 
     const result = await prioritizeSetAsides(mockInput, {
       apiKey: 'test-key',
       client: fakeClient,
     })
 
-    expect(result.source).toBe('claude')
+    expect(result.source).toBe('model')
     expect(result.amounts).toEqual({ sss: 38_000, philhealth: 50_000, pagibig: 12_000 })
     expect(result.reason).toContain('PhilHealth has the earliest deadline')
     expect(fakeClient).toHaveBeenCalledOnce()
   })
 
-  test('falls back to proportional split when Claude returns invalid schema', async () => {
-    const fakeClient = vi.fn().mockResolvedValue({
+  test('falls back to proportional split when the model returns invalid schema', async () => {
+    const fakeClient = vi.fn().mockResolvedValue(JSON.stringify({
       sss: 'not-a-number',
       reason: 'Oops',
-    })
+    }))
 
     const result = await prioritizeSetAsides(mockInput, {
       apiKey: 'test-key',
@@ -124,13 +124,13 @@ describe('prioritizeSetAsides', () => {
     expect(result.reason).toMatch(/^I split it proportionally because /)
   })
 
-  test('falls back to proportional split when Claude over-allocates total', async () => {
-    const fakeClient = vi.fn().mockResolvedValue({
+  test('falls back to proportional split when the model over-allocates total', async () => {
+    const fakeClient = vi.fn().mockResolvedValue(JSON.stringify({
       sss: 76_000,
       philhealth: 50_000,
       pagibig: 12_000,
       reason: 'Trying to give everyone full amount',
-    })
+    }))
 
     const result = await prioritizeSetAsides(mockInput, {
       apiKey: 'test-key',
@@ -142,13 +142,13 @@ describe('prioritizeSetAsides', () => {
     expect(result.reason).toMatch(/^I split it proportionally because /)
   })
 
-  test('falls back to proportional split when Claude allocates more than an agency needs', async () => {
-    const fakeClient = vi.fn().mockResolvedValue({
+  test('falls back to proportional split when the model allocates more than an agency needs', async () => {
+    const fakeClient = vi.fn().mockResolvedValue(JSON.stringify({
       sss: 0,
       philhealth: 80_000, // needs 50_000
       pagibig: 10_000,
       reason: 'Giving extra to PhilHealth',
-    })
+    }))
 
     const result = await prioritizeSetAsides(mockInput, {
       apiKey: 'test-key',
@@ -160,7 +160,7 @@ describe('prioritizeSetAsides', () => {
     expect(result.reason).toMatch(/^I split it proportionally because /)
   })
 
-  test('falls back to proportional split when Claude API throws', async () => {
+  test('falls back to proportional split when the model API throws', async () => {
     const fakeClient = vi.fn().mockRejectedValue(new Error('500 Internal Server Error'))
 
     const result = await prioritizeSetAsides(mockInput, {
@@ -207,7 +207,7 @@ describe('prioritizeSetAsides', () => {
 
     expect(result.source).toBe('fallback')
     expect(result.amounts).toEqual(proportionalSplit(mockInput.availableCentavos, mockInput.needed))
-    expect(result.reason).toContain('I split it proportionally because the Claude API key is not configured.')
+    expect(result.reason).toContain('I split it proportionally because the Gemini API key is not configured.')
     expect(result.reason).toContain('in proportion')
     expect(fakeClient).not.toHaveBeenCalled()
   })
@@ -276,7 +276,7 @@ describe('applyHardRules', () => {
 
   test('passes a valid pay decision', () => {
     const result = applyHardRules(
-      { action: 'pay', amount: 250_000_0000n, reason: 'Ready to remit', model: 'claude-sonnet-5-5' },
+      { action: 'pay', amount: 250_000_0000n, reason: 'Ready to remit', model: 'gemini-2.5-flash' },
       facts,
     )
     expect(result.blocked).toBe(false)
@@ -286,7 +286,7 @@ describe('applyHardRules', () => {
   test('hard rule overrides pay after deadline', () => {
     const pastDeadline = { ...facts, now: new Date('2026-12-01T00:00:00Z') }
     const result = applyHardRules(
-      { action: 'pay', amount: 250_000_0000n, reason: 'AI says pay', model: 'claude-sonnet-5-5' },
+      { action: 'pay', amount: 250_000_0000n, reason: 'AI says pay', model: 'gemini-2.5-flash' },
       pastDeadline,
     )
     expect(result.blocked).toBe(true)
@@ -299,7 +299,7 @@ describe('applyHardRules', () => {
   test('hard rule overrides pay if already remitted this period', () => {
     const already = { ...facts, alreadyRemitted: true }
     const result = applyHardRules(
-      { action: 'pay', amount: 250_000_0000n, reason: 'AI says pay', model: 'claude-sonnet-5-5' },
+      { action: 'pay', amount: 250_000_0000n, reason: 'AI says pay', model: 'gemini-2.5-flash' },
       already,
     )
     expect(result.blocked).toBe(true)
@@ -310,7 +310,7 @@ describe('applyHardRules', () => {
 
   test('hard rule overrides pay if amount exceeds computed contribution', () => {
     const result = applyHardRules(
-      { action: 'pay', amount: 500_000_0000n, reason: 'AI says pay more', model: 'claude-sonnet-5-5' },
+      { action: 'pay', amount: 500_000_0000n, reason: 'AI says pay more', model: 'gemini-2.5-flash' },
       facts,
     )
     expect(result.blocked).toBe(true)
@@ -320,7 +320,7 @@ describe('applyHardRules', () => {
   })
 })
 
-describe('decideRemittance with Claude caller and fallback', () => {
+describe('decideRemittance with the model caller and fallback', () => {
   const facts: RemittanceFacts = {
     agency: 'philhealth',
     period: '2026-11',
@@ -332,7 +332,7 @@ describe('decideRemittance with Claude caller and fallback', () => {
     now: new Date('2026-11-29T10:00:00Z'),
   }
 
-  test('returns parsed decision when Claude succeeds with structured JSON', async () => {
+  test('returns parsed decision when the model succeeds with structured JSON', async () => {
     const fakeCaller = async () => JSON.stringify({
       action: 'pay',
       amount: '833333333',
@@ -343,12 +343,12 @@ describe('decideRemittance with Claude caller and fallback', () => {
     expect(decision.action).toBe('pay')
     expect(decision.amount).toBe(833333333n)
     expect(decision.reason).toBe('PhilHealth contribution envelope is fully funded and deadline is tomorrow.')
-    expect(decision.model).toBe('claude-sonnet-5-5')
+    expect(decision.model).toBe('gemini-2.5-flash')
   })
 
-  test('uses fallback when Claude fails or throws', async () => {
+  test('uses fallback when the model fails or throws', async () => {
     const failingCaller = async () => {
-      throw new Error('Claude API network timeout')
+      throw new Error('the model API network timeout')
     }
 
     const decision = await decideRemittance(facts, { caller: failingCaller })
@@ -357,7 +357,7 @@ describe('decideRemittance with Claude caller and fallback', () => {
     expect(decision.reason).toContain('[Fallback]')
   })
 
-  test('uses fallback when Claude returns invalid schema', async () => {
+  test('uses fallback when the model returns invalid schema', async () => {
     const badSchemaCaller = async () => 'Sorry, I cannot answer this as JSON.'
 
     const decision = await decideRemittance(facts, { caller: badSchemaCaller })
@@ -365,7 +365,7 @@ describe('decideRemittance with Claude caller and fallback', () => {
     expect(decision.reason).toContain('[Fallback]')
   })
 
-  test('with an underfunded envelope, Claude or fallback waits', async () => {
+  test('with an underfunded envelope, model or fallback waits', async () => {
     const underfunded = { ...facts, escrowBalanceStroops: 10_000_0000n }
     const fakeCaller = async () => JSON.stringify({
       action: 'wait',

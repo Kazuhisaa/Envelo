@@ -13,8 +13,6 @@ export const AllocationSchema = z.object({
 })
 export type Allocation = z.infer<typeof AllocationSchema>
 
-/** JSON Schema for the Claude tool, derived from the same zod schema. */
-export const allocationJsonSchema = z.toJSONSchema(AllocationSchema)
 
 export type Validated = { ok: true; amounts: Record<Agency, number>; reason: string } | { ok: false; cause: string }
 

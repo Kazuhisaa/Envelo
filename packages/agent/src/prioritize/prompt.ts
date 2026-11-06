@@ -11,7 +11,8 @@ Hard rules:
 - Prefer filling an envelope completely over spreading funds too thinly, unless deadlines dictate otherwise.
 - Priority order guideline: nearest deadline first; if deadlines are tied or close, prioritize the agency whose lapse causes immediate loss of benefits (e.g. PhilHealth medical coverage).
 - Use proper glossary terms: "client payment", "set-aside", "envelope", "deadline", "contribution". Do NOT use an unqualified "payment".
-- You must call the allocate_set_asides tool with your allocation and reason.`
+- Respond with JSON only, in this exact shape (amounts are integer centavos):
+  {"sss": <int>, "philhealth": <int>, "pagibig": <int>, "reason": "<one sentence for the freelancer>"}`
 
 export const LAPSE_COST: Record<Agency, string> = {
   philhealth: 'Immediate lapse of hospitalization and health insurance coverage eligibility',

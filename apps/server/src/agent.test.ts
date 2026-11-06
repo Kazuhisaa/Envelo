@@ -12,7 +12,7 @@ import {
 } from './agent.ts'
 import type { RemittanceChain } from './noir.ts'
 
-describe('agent remittance loop (Noir and Claude faked)', () => {
+describe('agent remittance loop (Noir and the model faked)', () => {
   const period = periodOf(new Date())
 
   // Mock fake chain
@@ -135,14 +135,14 @@ describe('agent remittance loop (Noir and Claude faked)', () => {
     const deadline = deadlineFor('philhealth', period)
     clock.set(new Date(deadline.getTime() - 24 * 3600_000))
 
-    const failingClaude = async () => {
+    const failingModel = async () => {
       throw new Error('Anthropic rate limited')
     }
 
     const opts: TickEnvOptions = {
       chain: fakeChain,
       reads: fakeReads,
-      claudeCaller: failingClaude,
+      modelCaller: failingModel,
       db: fakeSql,
       period,
     }
@@ -173,7 +173,7 @@ describe('agent remittance loop (Noir and Claude faked)', () => {
     const opts: TickEnvOptions = {
       chain: fakeChain,
       reads: underfundedReads,
-      claudeCaller: async () => JSON.stringify({ action: 'wait', amount: 0, reason: 'Envelope is underfunded.' }),
+      modelCaller: async () => JSON.stringify({ action: 'wait', amount: 0, reason: 'Envelope is underfunded.' }),
       db: fakeSql,
     }
 
@@ -190,7 +190,7 @@ describe('agent remittance loop (Noir and Claude faked)', () => {
     // Clock is set after the deadline
     clock.set(new Date(deadline.getTime() + 3600_000))
 
-    const payClaude = async () => JSON.stringify({
+    const payModel = async () => JSON.stringify({
       action: 'pay',
       amount: '2520000000',
       reason: 'AI says remit now anyway!',
@@ -199,7 +199,7 @@ describe('agent remittance loop (Noir and Claude faked)', () => {
     const opts: TickEnvOptions = {
       chain: fakeChain,
       reads: fakeReads,
-      claudeCaller: payClaude,
+      modelCaller: payModel,
       db: fakeSql,
       period,
     }
@@ -229,7 +229,7 @@ describe('agent remittance loop (Noir and Claude faked)', () => {
       created_at: new Date(),
     })
 
-    const payClaude = async () => JSON.stringify({
+    const payModel = async () => JSON.stringify({
       action: 'pay',
       amount: '266666667',
       reason: 'AI wants to remit again',
@@ -238,7 +238,7 @@ describe('agent remittance loop (Noir and Claude faked)', () => {
     const opts: TickEnvOptions = {
       chain: fakeChain,
       reads: fakeReads,
-      claudeCaller: payClaude,
+      modelCaller: payModel,
       db: fakeSql,
       period,
     }
@@ -254,7 +254,7 @@ describe('agent remittance loop (Noir and Claude faked)', () => {
     const deadline = deadlineFor('philhealth', period)
     clock.set(new Date(deadline.getTime() - 24 * 3600_000))
 
-    const payTooMuchClaude = async () => JSON.stringify({
+    const payTooMuchModel = async () => JSON.stringify({
       action: 'pay',
       amount: '9999999999999', // huge amount
       reason: 'AI trying to remit over the contribution cap',
@@ -263,7 +263,7 @@ describe('agent remittance loop (Noir and Claude faked)', () => {
     const opts: TickEnvOptions = {
       chain: fakeChain,
       reads: fakeReads,
-      claudeCaller: payTooMuchClaude,
+      modelCaller: payTooMuchModel,
       db: fakeSql,
     }
 
@@ -281,7 +281,7 @@ describe('agent remittance loop (Noir and Claude faked)', () => {
     // Noir contract checkPayment returns over_limit
     checkResult = { ok: false, reason: 'over_limit' }
 
-    const payClaude = async () => JSON.stringify({
+    const payModel = async () => JSON.stringify({
       action: 'pay',
       amount: '2520000000',
       reason: 'Time to remit SSS contribution.',
@@ -290,7 +290,7 @@ describe('agent remittance loop (Noir and Claude faked)', () => {
     const opts: TickEnvOptions = {
       chain: fakeChain,
       reads: fakeReads,
-      claudeCaller: payClaude,
+      modelCaller: payModel,
       db: fakeSql,
     }
 
@@ -307,7 +307,7 @@ describe('agent remittance loop (Noir and Claude faked)', () => {
     const opts: TickEnvOptions = {
       chain: fakeChain,
       reads: fakeReads,
-      claudeCaller: async () => JSON.stringify({ action: 'pay', reason: 'Deadline is approaching, remit.' }),
+      modelCaller: async () => JSON.stringify({ action: 'pay', reason: 'Deadline is approaching, remit.' }),
       db: fakeSql,
     }
 

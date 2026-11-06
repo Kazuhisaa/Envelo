@@ -15,6 +15,6 @@ export type PrioritizeResult = {
   amounts: Record<Agency, number>
   /** One sentence for the freelancer. */
   reason: string
-  /** 'claude' when the model's split was applied, 'fallback' for the proportional split. */
-  source: 'claude' | 'fallback'
+  /** 'model' when the model's split was applied, 'fallback' for the proportional split. */
+  source: 'model' | 'fallback'
 }
