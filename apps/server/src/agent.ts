@@ -33,7 +33,7 @@ import {
   type RemittanceChain,
   NoirContractError,
 } from './noir.ts'
-import { periodIncome } from './setAside.ts'
+import { periodIncome, serialized } from './setAside.ts'
 
 const rate = () => {
   const r = process.env.XLM_PHP_RATE
@@ -308,12 +308,15 @@ export async function tickEnvelope(agency: Agency, options?: TickEnvOptions) {
   }
 }
 
-export async function tickAll(options?: TickEnvOptions) {
-  const results = []
-  for (const agency of AGENCIES) {
-    results.push(await tickEnvelope(agency, options))
-  }
-  return results
+// Waits for any running set-aside (same queue), so the agent never pays mid cap update.
+export function tickAll(options?: TickEnvOptions) {
+  return serialized('agent tick', async () => {
+    const results = []
+    for (const agency of AGENCIES) {
+      results.push(await tickEnvelope(agency, options))
+    }
+    return results
+  })
 }
 
 export async function fastForward(to?: Date, options?: TickEnvOptions) {

@@ -193,11 +193,16 @@ async function setAside(clientPaymentId: string, chain: Chain) {
 }
 
 // ponytail: in-process queue, one server instance. Use a Postgres advisory lock if the server scales out.
+// Set-asides and agent ticks share it: a set-aside ends by re-registering each envelope's agent cap
+// (revokeAgent then registerAgent), and an agent authorize landing in that gap is refused on-chain.
 let queue: Promise<unknown> = Promise.resolve()
-export function runSetAside(clientPaymentId: string, chain: Chain) {
-  const run = queue.then(() => setAside(clientPaymentId, chain))
-  queue = run.catch((e) => console.error(`set-aside for client payment ${clientPaymentId} failed:`, e))
+export function serialized<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const run = queue.then(fn)
+  queue = run.catch((e) => console.error(`${label} failed:`, e))
   return run
+}
+export function runSetAside(clientPaymentId: string, chain: Chain) {
+  return serialized(`set-aside for client payment ${clientPaymentId}`, () => setAside(clientPaymentId, chain))
 }
 
 type Reads = { balance(agency: Agency): Promise<bigint>; hash(agency: Agency): string }
