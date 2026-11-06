@@ -30,10 +30,11 @@ export type Envelope = {
   setAsideCentavos: number
   balanceXlm: string | null
   balanceCentavos: number | null
+  agencyAccount?: string | null
   remitted?: boolean
   remittance?: { amountXlm: string; amountPhpCentavos: number | null; authorizeTxHash: string; claimTxHash: string; createdAt: string } | null
   latest?: {
-    status: 'funded' | 'failed' | 'refused'
+    status: 'pending' | 'funded' | 'failed'
     amountCentavos: number
     txHash: string | null
     outerTxHash?: string | null

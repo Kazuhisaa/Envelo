@@ -28,10 +28,8 @@ export function PeriodSummary({
 
   const deadlineStr = upcomingDeadlines.length ? date(upcomingDeadlines[0]) : null
 
-  const prevMonthDate = new Date(Date.UTC(year, mon - 2, 1))
-  const prevMonthName = new Intl.DateTimeFormat('en-PH', { month: 'long', timeZone: 'Asia/Manila' }).format(prevMonthDate)
 
-  let subtitle = `New period · ${prevMonthName} is fully remitted`
+  let subtitle = 'New period'
   if (data.incomeCentavos > 0) {
     const countStr = typeof paymentCount === 'number' && paymentCount > 0
       ? `${paymentCount} client payment${paymentCount === 1 ? '' : 's'}`

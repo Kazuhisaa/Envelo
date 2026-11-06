@@ -10,7 +10,17 @@ import { refusalRoutes } from './refusal.ts'
 await migrate()
 onClientPayment((id) => void runSetAside(id, chain).catch(() => {}))
 
-const reads = { balance: (a: Parameters<typeof envelopeHash>[0]) => noir.getEscrowBalance(envelopeHash(a)), hash: envelopeHash }
+// Envelope balances come from Soroban RPC (~1-3 s each); cache them briefly so dashboard polls don't wait on the chain.
+const balanceCache = new Map<string, { at: number; value: Promise<bigint> }>()
+const cachedBalance = (hash: string) => {
+  const hit = balanceCache.get(hash)
+  if (hit && Date.now() - hit.at < 10_000) return hit.value
+  const value = noir.getEscrowBalance(hash)
+  value.catch(() => balanceCache.delete(hash))
+  balanceCache.set(hash, { at: Date.now(), value })
+  return value
+}
+const reads = { balance: (a: Parameters<typeof envelopeHash>[0]) => cachedBalance(envelopeHash(a)), hash: envelopeHash }
 const app = createApp(dbOk)
   .route('/', veloRoutes)
   .route('/', setAsideRoutes(chain, reads))

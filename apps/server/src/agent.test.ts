@@ -144,6 +144,7 @@ describe('agent remittance loop (Noir and the model faked)', () => {
       reads: fakeReads,
       modelCaller: failingModel,
       db: fakeSql,
+      income: 25_000_00,
       period,
     }
 
@@ -175,6 +176,7 @@ describe('agent remittance loop (Noir and the model faked)', () => {
       reads: underfundedReads,
       modelCaller: async () => JSON.stringify({ action: 'wait', amount: 0, reason: 'Envelope is underfunded.' }),
       db: fakeSql,
+      income: 25_000_00,
     }
 
     const res = await tickEnvelope('philhealth', opts)
@@ -201,6 +203,7 @@ describe('agent remittance loop (Noir and the model faked)', () => {
       reads: fakeReads,
       modelCaller: payModel,
       db: fakeSql,
+      income: 25_000_00,
       period,
     }
 
@@ -240,6 +243,7 @@ describe('agent remittance loop (Noir and the model faked)', () => {
       reads: fakeReads,
       modelCaller: payModel,
       db: fakeSql,
+      income: 25_000_00,
       period,
     }
 
@@ -265,6 +269,7 @@ describe('agent remittance loop (Noir and the model faked)', () => {
       reads: fakeReads,
       modelCaller: payTooMuchModel,
       db: fakeSql,
+      income: 25_000_00,
     }
 
     const res = await tickEnvelope('philhealth', opts)
@@ -292,6 +297,7 @@ describe('agent remittance loop (Noir and the model faked)', () => {
       reads: fakeReads,
       modelCaller: payModel,
       db: fakeSql,
+      income: 25_000_00,
     }
 
     const res = await tickEnvelope('sss', opts)
@@ -309,6 +315,7 @@ describe('agent remittance loop (Noir and the model faked)', () => {
       reads: fakeReads,
       modelCaller: async () => JSON.stringify({ action: 'pay', reason: 'Deadline is approaching, remit.' }),
       db: fakeSql,
+      income: 25_000_00,
     }
 
     const ff = await fastForward(undefined, opts)
