@@ -276,7 +276,7 @@ describe('applyHardRules', () => {
 
   test('passes a valid pay decision', () => {
     const result = applyHardRules(
-      { action: 'pay', amount: 250_000_0000n, reason: 'Ready to remit', model: 'gemini-2.5-flash' },
+      { action: 'pay', amount: 250_000_0000n, reason: 'Ready to remit', model: 'gemini-3.5-flash' },
       facts,
     )
     expect(result.blocked).toBe(false)
@@ -286,7 +286,7 @@ describe('applyHardRules', () => {
   test('hard rule overrides pay after deadline', () => {
     const pastDeadline = { ...facts, now: new Date('2026-12-01T00:00:00Z') }
     const result = applyHardRules(
-      { action: 'pay', amount: 250_000_0000n, reason: 'AI says pay', model: 'gemini-2.5-flash' },
+      { action: 'pay', amount: 250_000_0000n, reason: 'AI says pay', model: 'gemini-3.5-flash' },
       pastDeadline,
     )
     expect(result.blocked).toBe(true)
@@ -299,7 +299,7 @@ describe('applyHardRules', () => {
   test('hard rule overrides pay if already remitted this period', () => {
     const already = { ...facts, alreadyRemitted: true }
     const result = applyHardRules(
-      { action: 'pay', amount: 250_000_0000n, reason: 'AI says pay', model: 'gemini-2.5-flash' },
+      { action: 'pay', amount: 250_000_0000n, reason: 'AI says pay', model: 'gemini-3.5-flash' },
       already,
     )
     expect(result.blocked).toBe(true)
@@ -310,7 +310,7 @@ describe('applyHardRules', () => {
 
   test('hard rule overrides pay if amount exceeds computed contribution', () => {
     const result = applyHardRules(
-      { action: 'pay', amount: 500_000_0000n, reason: 'AI says pay more', model: 'gemini-2.5-flash' },
+      { action: 'pay', amount: 500_000_0000n, reason: 'AI says pay more', model: 'gemini-3.5-flash' },
       facts,
     )
     expect(result.blocked).toBe(true)
@@ -343,7 +343,7 @@ describe('decideRemittance with the model caller and fallback', () => {
     expect(decision.action).toBe('pay')
     expect(decision.amount).toBe(833333333n)
     expect(decision.reason).toBe('PhilHealth contribution envelope is fully funded and deadline is tomorrow.')
-    expect(decision.model).toBe('gemini-2.5-flash')
+    expect(decision.model).toBe('gemini-3.5-flash')
   })
 
   test('uses fallback when the model fails or throws', async () => {

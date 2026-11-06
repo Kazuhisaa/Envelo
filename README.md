@@ -153,7 +153,7 @@ pnpm build
 | `VELO_GAS_API_KEY` | server | for gas | Velo Gas Station Testnet API key (`tg_test_...`) |
 | `VELO_GAS_BASE_URL` | server | no | Gas Station endpoint. Default `https://www.velo-build.dev` |
 | `GEMINI_API_KEY` | server (agent) | for agent | Gemini API key (free at aistudio.google.com). Unset = fallback rules |
-| `GEMINI_MODEL` | server (agent) | no | Default `gemini-2.5-flash` |
+| `GEMINI_MODEL` | server (agent) | no | Default `gemini-3.5-flash` (falls back to `gemini-3.5-flash-lite` when busy) |
 | `XLM_PHP_RATE` | server | **yes** | PHP value of 1 XLM, e.g. `15.00` |
 | `WEB_URL` | server | no | Velo checkout redirects. Default `http://localhost:3000` |
 | `NEXT_PUBLIC_SERVER_URL` | web | no | API base URL. Default `http://localhost:8787` |

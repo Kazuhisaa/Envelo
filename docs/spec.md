@@ -132,7 +132,7 @@ Three layers:
 | Layer | Decides | Example |
 | --- | --- | --- |
 | Hard rules (code) | What must always hold | No remittance after the deadline; **one remittance per agency per period**; never remit more than the computed contribution |
-| AI (Gemini, `gemini-2.5-flash`) | Gray areas, always with a reason | When to remit (`pay` / `wait` / `ask_user`); which envelope first when money is short |
+| AI (Gemini, `gemini-3.5-flash`) | Gray areas, always with a reason | When to remit (`pay` / `wait` / `ask_user`); which envelope first when money is short |
 | Contract (Noir) | Last line of defence | `checkPayment` / `authorizePayment` refuse `over_limit`, `expired`, `insufficient_escrow` even if the AI said pay |
 
 - The LLM returns structured JSON, e.g. `{ "action": "pay" | "wait" | "ask_user", "amount": "<PHP>", "reason": "<one sentence for the freelancer>" }`. Validate it with a schema and the hard rules before any chain call.
