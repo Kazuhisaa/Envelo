@@ -1,14 +1,12 @@
-import { date, peso, phpToXlm, xlm } from '../lib/format'
+import { date, peso } from '../lib/format'
 import type { Envelopes } from '../lib/types'
 
 export function PeriodSummary({
   data,
   paymentCount,
-  rate,
 }: {
   data: Envelopes
   paymentCount?: number
-  rate?: string | null
 }) {
   const setAside = data.envelopes.reduce((sum, envelope) => sum + envelope.setAsideCentavos, 0)
   const allBalancesAvailable = data.envelopes.every((e) => e.balanceCentavos !== null)
@@ -16,16 +14,6 @@ export function PeriodSummary({
     ? data.envelopes.reduce((sum, e) => sum + (e.balanceCentavos ?? 0), 0)
     : null
 
-  const formatUsdcRate = (centavos: number) => {
-    if (centavos <= 0) return '0 USDC'
-    try {
-      const activeRate = rate || '18.50'
-      const num = Number(phpToXlm(centavos, activeRate))
-      return `${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`
-    } catch {
-      return '0 USDC'
-    }
-  }
 
   // Format month name (e.g. "November 2026")
   const [year, mon] = data.period.split('-').map(Number)
@@ -61,9 +49,6 @@ export function PeriodSummary({
           <span className="dots" aria-hidden="true"></span>
           <span>
             <span className="amt">{peso(data.incomeCentavos)}</span>
-            <span className="xlm">
-              {formatUsdcRate(data.incomeCentavos)}
-            </span>
           </span>
         </div>
         <div className="total sealed">
@@ -72,9 +57,6 @@ export function PeriodSummary({
           <span>
             <span className="amt">
               {sealedTotal === null ? peso(setAside) : peso(sealedTotal)}
-            </span>
-            <span className="xlm">
-              {formatUsdcRate(sealedTotal ?? setAside)}
             </span>
           </span>
         </div>

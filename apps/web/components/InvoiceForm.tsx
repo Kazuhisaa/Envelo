@@ -168,7 +168,7 @@ export function InvoiceForm({ rate, onCreated }: Props) {
         </div>
         <span className="hint">
           {xlmString && rate ? (
-            `≈ ${xlmString} USDC. Your client pays in USDC on Stellar Testnet.`
+            `Your client pays ≈ ${xlmString} XLM through the checkout link.`
           ) : conversionError ? (
             <span style={{ color: 'var(--red-ink)' }}>{conversionError}</span>
           ) : (
