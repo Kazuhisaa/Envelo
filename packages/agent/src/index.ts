@@ -50,7 +50,7 @@ export async function prioritizeSetAsides(
   }
 
   const client = deps.client ?? geminiJson
-  const timeoutMs = deps.timeoutMs ?? 10_000
+  const timeoutMs = deps.timeoutMs ?? 20_000
 
   try {
     const controller = new AbortController()
@@ -273,7 +273,7 @@ export async function decideRemittance(facts: RemittanceFacts, options?: DecideO
         return fallbackDecision(facts)
       }
 
-      rawResponse = await geminiJson({ system: REMITTANCE_SYSTEM_PROMPT, user: userPrompt, apiKey })
+      rawResponse = await geminiJson({ system: REMITTANCE_SYSTEM_PROMPT, user: userPrompt, apiKey, signal: AbortSignal.timeout(20_000) })
     }
 
     // Clean JSON string (remove markdown code fences if present)
