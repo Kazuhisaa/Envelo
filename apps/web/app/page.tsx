@@ -57,11 +57,6 @@ function DashboardContent() {
     return <DashboardSkeleton isPreview={true} />
   }
 
-  // 2. Initial live data fetch: display accurate skeleton while system is loading
-  if (envelopes.loading && !envelopes.data) {
-    return <DashboardSkeleton />
-  }
-
   const periodData = envelopes.data
   const invoiceList = invoices.data ?? []
 
@@ -105,7 +100,7 @@ function DashboardContent() {
         hour12: false,
         timeZone: 'Asia/Manila',
       }).format(new Date(e.latest!.at)),
-      tag: e.latest!.status.toUpperCase(),
+      tag: e.latest!.status === 'pending' ? 'SEALING…' : e.latest!.status.toUpperCase(),
       reason:
         e.latest!.reason ||
         (e.latest!.status === 'failed'

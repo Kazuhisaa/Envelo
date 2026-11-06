@@ -27,39 +27,19 @@ export function useDashboardData() {
     }
     running.current = true
     try {
-      const [envRes, invRes, payRes, decRes, remRes] = await Promise.allSettled([
-        readApi<Envelopes>('/envelopes'),
-        readApi<Invoice[]>('/invoices'),
-        readApi<ClientPayment[]>('/client-payments'),
-        readApi<Decision[]>('/agent/decisions'),
-        readApi<Remittance[]>('/agent/remittances'),
+      // Each section updates as soon as its own request lands; /envelopes reads the chain and is the slow one.
+      const load = <T,>(path: string, set: (update: (prev: Loadable<T>) => Loadable<T>) => void) =>
+        readApi<T>(path).then(
+          (data) => active.current && set(() => ({ data, loading: false, error: null })),
+          (e) => active.current && set((prev) => ({ ...prev, loading: false, error: e instanceof Error ? e.message : String(e) })),
+        )
+      await Promise.all([
+        load<Envelopes>('/envelopes', setEnvelopes),
+        load<Invoice[]>('/invoices', setInvoices),
+        load<ClientPayment[]>('/client-payments', setPayments),
+        readApi<Decision[]>('/agent/decisions').then((d) => active.current && setDecisions(d), () => {}),
+        readApi<Remittance[]>('/agent/remittances').then((r) => active.current && setRemittances(r), () => {}),
       ])
-
-      if (active.current) {
-        if (decRes.status === 'fulfilled') setDecisions(decRes.value)
-        if (remRes.status === 'fulfilled') setRemittances(remRes.value)
-
-        if (envRes.status === 'fulfilled') {
-          setEnvelopes({ data: envRes.value, loading: false, error: null })
-        } else {
-          const msg = envRes.reason instanceof Error ? envRes.reason.message : String(envRes.reason)
-          setEnvelopes((prev) => ({ ...prev, loading: false, error: msg }))
-        }
-
-        if (invRes.status === 'fulfilled') {
-          setInvoices({ data: invRes.value, loading: false, error: null })
-        } else {
-          const msg = invRes.reason instanceof Error ? invRes.reason.message : String(invRes.reason)
-          setInvoices((prev) => ({ ...prev, loading: false, error: msg }))
-        }
-
-        if (payRes.status === 'fulfilled') {
-          setPayments({ data: payRes.value, loading: false, error: null })
-        } else {
-          const msg = payRes.reason instanceof Error ? payRes.reason.message : String(payRes.reason)
-          setPayments((prev) => ({ ...prev, loading: false, error: msg }))
-        }
-      }
     } finally {
       running.current = false
       if (queued.current) {

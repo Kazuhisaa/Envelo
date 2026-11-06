@@ -20,7 +20,7 @@ export function EnvelopeCard({
     : (empty ? 0 : 100)
 
   const isRemitted = e.remitted ?? false
-  const isRefused = e.latest?.status === 'refused' || (e.latest?.reason?.toLowerCase().includes('refused') ?? false)
+  const isRefused = e.latest?.reason?.toLowerCase().includes('refused') ?? false
   const isStamped = isRemitted
   const isAttention = !empty && !isRemitted && (e.latest?.status === 'failed' || isRefused || isFull)
 
@@ -85,6 +85,14 @@ export function EnvelopeCard({
               <a href={explorer(e.remittance.claimTxHash)} target="_blank" rel="noreferrer">
                 {e.remittance.claimTxHash.slice(0, 4)}…{e.remittance.claimTxHash.slice(-3)}
               </a>
+              {e.agencyAccount && (
+                <>
+                  {' · '}
+                  <a href={`https://stellar.expert/explorer/testnet/account/${e.agencyAccount}`} target="_blank" rel="noreferrer">
+                    Agency account ↗
+                  </a>
+                </>
+              )}
             </>
           ) : (
             <>

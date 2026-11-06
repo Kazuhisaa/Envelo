@@ -74,6 +74,8 @@ export type TickEnvOptions = {
   agentSecret?: string
   db?: typeof sql
   period?: Period
+  /** This period's income in centavos; read from client_payments when omitted. */
+  income?: number
 }
 
 export type DecisionRow = {
@@ -134,15 +136,13 @@ export async function gatherFacts(agency: Agency, options?: TickEnvOptions): Pro
     console.warn(`could not read policy for ${agency}:`, err)
   }
 
-  let income = 0
-  try {
-    income = await periodIncome(period)
-  } catch {
-    income = 0
-  }
-  // Baseline demo fallback if no client payments have been recorded yet
-  if (income === 0) {
-    income = 25_000_00 // ₱25,000 income basis
+  let income = options?.income ?? 0
+  if (options?.income === undefined) {
+    try {
+      income = await periodIncome(period)
+    } catch {
+      income = 0
+    }
   }
 
   const contributionCentavos = contributionFor(agency, income)

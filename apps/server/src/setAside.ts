@@ -17,7 +17,7 @@ import {
 import { prioritizeSetAsides } from '@envelo/agent'
 import { clock } from './clock.ts'
 import { sql } from './db.ts'
-import type { Chain } from './noir.ts'
+import { agencyPublicKey, type Chain } from './noir.ts'
 import { recoverGasOp } from './gas.ts'
 
 const rate = () => {
@@ -103,7 +103,7 @@ async function setAside(clientPaymentId: string, chain: Chain) {
         }[]
       >`
         insert into set_asides (client_payment_id, agency, period, php_centavos, stroops, status, reason)
-        values (${cp.id}, ${a}, ${cp.period}, ${php}, ${stroops.toString()}, 'failed', ${reason})
+        values (${cp.id}, ${a}, ${cp.period}, ${php}, ${stroops.toString()}, 'pending', ${reason})
         returning id, status, gas_request_id, inner_tx_hash`
       row = inserted
     }
@@ -208,10 +208,7 @@ export function setAsideRoutes(chain: Chain, reads: Reads) {
   routes.get('/envelopes', async (c) => {
     const now = clock.now()
     const period = periodOf(now)
-    let income = await periodIncome(period)
-    if (income === 0) {
-      income = 25_000_00 // Baseline demo income if no client payments yet
-    }
+    const income = await periodIncome(period)
     const rows = await sql<{
       agency: Agency
       status: string
@@ -243,6 +240,7 @@ export function setAsideRoutes(chain: Chain, reads: Reads) {
         return {
           agency: a,
           label: AGENCY_LABEL[a],
+          agencyAccount: (() => { try { return agencyPublicKey(a) } catch { return null } })(),
           deviceHash: reads.hash(a),
           deadline: deadlineFor(a, period),
           contributionCentavos: contributionFor(a, income),
@@ -280,8 +278,9 @@ export function setAsideRoutes(chain: Chain, reads: Reads) {
     if (newest) {
       const mine = await sql<{ agency: Agency; php_centavos: number; status: string }[]>`select agency, php_centavos, status from set_asides where client_payment_id = ${newest.id}`
       const ok = mine.filter((m) => m.status === 'funded')
-      if (ok.length) notice = `I set aside ${ok.map((m) => `${formatPeso(m.php_centavos)} for ${AGENCY_LABEL[m.agency]}`).join(', ')}.`
-      else if (!mine.length && Date.now() - newest.received_at.getTime() < 10 * 60_000) notice = 'Setting aside your contributions…'
+      const running = mine.some((m) => m.status === 'pending') || (!mine.length && Date.now() - newest.received_at.getTime() < 10 * 60_000)
+      if (running) notice = 'Setting aside your contributions…'
+      else if (ok.length) notice = `I set aside ${ok.map((m) => `${formatPeso(m.php_centavos)} for ${AGENCY_LABEL[m.agency]}`).join(', ')}.`
     }
 
     return c.json({
