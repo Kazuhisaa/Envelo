@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { getPasscode, setPasscode } from '../lib/api'
+import { getPasscode, readApi, setPasscode } from '../lib/api'
 import { month } from '../lib/format'
 
 function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
@@ -12,6 +12,8 @@ function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
   const [periodOpen, setPeriodOpen] = useState(false)
   const [open, setOpen] = useState(false)
   const [passcode, setLocal] = useState('')
+  // The lock button only appears when the server actually requires a passcode.
+  const [locked, setLocked] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -22,6 +24,10 @@ function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
     setPeriod(serverPeriod ?? '2026-11')
     setLocal(getPasscode())
   }, [serverPeriod])
+
+  useEffect(() => {
+    readApi<{ passcodeRequired?: boolean }>('/config').then((c) => setLocked(Boolean(c.passcodeRequired)), () => {})
+  }, [])
 
   const handlePeriodChange = (val: string) => {
     setPeriod(val)
@@ -162,6 +168,7 @@ function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
           )}
         </div>
 
+        {locked && (
         <button
           ref={buttonRef}
           className={`lock ${open ? 'active' : ''} ${passcode ? 'unlocked' : ''}`}
@@ -186,9 +193,10 @@ function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
           <span className="lock-text-full">{passcode ? 'Demo unlocked' : 'Demo locked'}</span>
           <span className="lock-text-short">{passcode ? 'Unlocked' : 'Locked'}</span>
         </button>
+        )}
       </div>
 
-      {open && (
+      {locked && open && (
         <div ref={panelRef} className="passcode-panel" role="dialog" aria-label="Demo passcode settings">
           <label htmlFor="demo-passcode">Demo passcode</label>
           <input

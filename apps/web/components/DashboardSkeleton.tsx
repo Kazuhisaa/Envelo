@@ -315,7 +315,7 @@ export function DashboardSkeleton({ isPreview = false }: { isPreview?: boolean }
           </svg>{' '}
           Demo controls
         </h2>
-        <p>Controls for the live demo. They need the demo passcode and don't exist for real users.</p>
+        <p>Controls for the live demo; they don't exist for real users.</p>
         <div className="acts">
           <button className="btn ghost" type="button" disabled>
             <svg

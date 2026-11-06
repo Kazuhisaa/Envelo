@@ -92,7 +92,6 @@ docs/             Spec, ADRs, mockups
    You need at least these:
    ```env
    DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres
-   DEMO_PASSCODE=pick-any-passcode
    XLM_PHP_RATE=15.00
    ```
    Leave the five `*_SECRET` values empty. The next step fills them in.
@@ -121,7 +120,7 @@ Velo has to reach `POST /webhooks/velo` from the internet. Expose the server wit
 
 ### Writes need the passcode
 
-Every non-GET request except the Velo webhook needs the `x-demo-passcode: <DEMO_PASSCODE>` header. If `DEMO_PASSCODE` is unset, every write is rejected.
+The live demo is open so judges can try it. Setting `DEMO_PASSCODE` locks it: every non-GET request except the Velo webhook then needs the `x-demo-passcode: <DEMO_PASSCODE>` header, and the dashboard shows a lock button to enter it.
 
 ### Tests, lint, build
 
@@ -143,7 +142,7 @@ pnpm build
 | --- | --- | --- | --- |
 | `PORT` | server | no | Default `8787` |
 | `DATABASE_URL` | server | **yes** | Postgres connection string. The server won't start without it |
-| `DEMO_PASSCODE` | server | **yes** | Required in the `x-demo-passcode` header on writes |
+| `DEMO_PASSCODE` | server | no | Optional lock. When set, writes need it in the `x-demo-passcode` header. Unset = open demo |
 | `OWNER_SECRET` | server | **yes** | Freelancer's Stellar key. Signs envelope writes (ADR-0001). Written by `pnpm setup:testnet` |
 | `AGENT_SECRET` | server | **yes** | Agent's Stellar key. Written by `pnpm setup:testnet` |
 | `SSS_AGENCY_SECRET`, `PHILHEALTH_AGENCY_SECRET`, `PAGIBIG_AGENCY_SECRET` | server | **yes** | Mock agency accounts. Written by `pnpm setup:testnet` |

@@ -56,7 +56,7 @@ function onClientPaymentRecorded(payment: ClientPaymentRow) {
 
 export const veloRoutes = new Hono()
 
-veloRoutes.get('/config', (c) => c.json({ xlmPhpRate: rate() || null }))
+veloRoutes.get('/config', (c) => c.json({ xlmPhpRate: rate() || null, passcodeRequired: Boolean(process.env.DEMO_PASSCODE) }))
 
 veloRoutes.post('/invoices', async (c) => {
   const body = await c.req.json().catch(() => null)

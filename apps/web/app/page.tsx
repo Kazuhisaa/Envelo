@@ -296,7 +296,7 @@ function DashboardContent() {
           Demo controls
         </h2>
         <p>
-          Controls for the live demo. They need the demo passcode and don't exist for real users. Clock:{' '}
+          Controls for the live demo; they don't exist for real users. Clock:{' '}
           {periodData?.isSimulated && periodData.clockNow
             ? `simulated, ${noteTime(periodData.clockNow)}`
             : 'real time'}

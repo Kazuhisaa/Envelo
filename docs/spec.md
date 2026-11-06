@@ -38,7 +38,7 @@ pnpm monorepo:
 
 - App records (client payments, set-asides, decisions, remittances/receipts) live in one hosted Postgres (Neon or Render free tier). Chain state (escrow balances, policies) is always read from Noir, never cached as truth.
 - All secrets live in the server `.env` only: owner key, agent key, three agency keys, `VELO_API_KEY`, `VELO_WEBHOOK_SECRET`, `GEMINI_API_KEY`, `DEMO_PASSCODE`, database URL. Commit `.env.example`, never `.env`.
-- Every write route (create invoice, fast-forward, refusal demos) requires the `DEMO_PASSCODE`. Read routes and the dashboard are public.
+- The demo is open so judges can try it. Setting `DEMO_PASSCODE` locks every write route (create invoice, fast-forward, refusal demos) behind it; read routes and the dashboard stay public.
 - Node version: `@noirx402/agent-sdk` requires Node 22.23.4+ (or 24.22.1+); `@carts1024/velo-sdk` requires 22.6+. Pin a Node version both hosts support.
 
 ## Keys and accounts (Stellar Testnet, funded by Friendbot)

@@ -23,7 +23,7 @@ test('POST with passcode passes the guard', async () => {
   expect(res.status).toBe(404) // no route yet, but the guard let it through
 })
 
-test('guard fails closed when DEMO_PASSCODE is unset', async () => {
+test('writes are open when DEMO_PASSCODE is unset (open demo)', async () => {
   delete process.env.DEMO_PASSCODE
-  expect((await app.request('/anything', { method: 'POST', headers: { 'x-demo-passcode': '' } })).status).toBe(401)
+  expect((await app.request('/anything', { method: 'POST' })).status).toBe(404) // guard let it through
 })
