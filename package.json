@@ -12,7 +12,8 @@
     "test": "vitest run --no-file-parallelism",
     "lint": "pnpm -r lint",
     "setup:testnet": "pnpm --filter @envelo/server setup:testnet",
-    "reset:envelopes": "pnpm --filter @envelo/server reset:envelopes"
+    "reset:envelopes": "pnpm --filter @envelo/server reset:envelopes",
+    "check:ai": "pnpm --filter @envelo/server check:ai"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",

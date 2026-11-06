@@ -168,6 +168,7 @@ Every non-GET request except the Velo webhook needs the `x-demo-passcode: <DEMO_
 pnpm test     # unit tests; DB-backed tests are skipped unless TEST_DATABASE_URL is set
 TEST_DATABASE_URL=postgres://... pnpm test   # also runs DB tests (they TRUNCATE tables — use a throwaway DB)
 pnpm lint     # tsc across every package
+pnpm check:ai # asks Gemini two sample questions (no database, no transactions): OK (AI) or FALLBACK
 pnpm build
 ```
 
