@@ -1,4 +1,5 @@
 import { serve } from '@hono/node-server'
+import { AGENCIES } from '@envelo/shared'
 import { createApp } from './app.ts'
 import { dbOk, migrate } from './db.ts'
 import { chain, envelopeHash, noir } from './noir.ts'
@@ -10,16 +11,27 @@ import { refusalRoutes } from './refusal.ts'
 await migrate()
 onClientPayment((id) => void runSetAside(id, chain).catch(() => {}))
 
-// Envelope balances come from Soroban RPC (~1-3 s each); cache them briefly so dashboard polls don't wait on the chain.
-const balanceCache = new Map<string, { at: number; value: Promise<bigint> }>()
-const cachedBalance = (hash: string) => {
-  const hit = balanceCache.get(hash)
-  if (hit && Date.now() - hit.at < 10_000) return hit.value
-  const value = noir.getEscrowBalance(hash)
-  value.catch(() => balanceCache.delete(hash))
-  balanceCache.set(hash, { at: Date.now(), value })
-  return value
+// Envelope balances come from Soroban RPC (several seconds from Railway). Serve the last known value at once and
+// refresh it in the background when older than 10 s (stale-while-revalidate); the cache is warmed at startup,
+// so the dashboard never waits on the chain. Only the very first read of a balance blocks.
+const balances = new Map<string, { at: number; value: bigint }>()
+const inFlight = new Map<string, Promise<bigint>>()
+const fetchBalance = (hash: string) => {
+  let p = inFlight.get(hash)
+  if (!p) {
+    p = noir.getEscrowBalance(hash)
+    inFlight.set(hash, p)
+    p.then((value) => balances.set(hash, { at: Date.now(), value }), () => {}).finally(() => inFlight.delete(hash))
+  }
+  return p
 }
+const cachedBalance = async (hash: string) => {
+  const hit = balances.get(hash)
+  if (!hit) return fetchBalance(hash)
+  if (Date.now() - hit.at > 10_000) void fetchBalance(hash).catch(() => {})
+  return hit.value
+}
+for (const a of AGENCIES) void fetchBalance(envelopeHash(a)).catch(() => {}) // warm the cache
 const reads = { balance: (a: Parameters<typeof envelopeHash>[0]) => cachedBalance(envelopeHash(a)), hash: envelopeHash }
 const app = createApp(dbOk)
   .route('/', veloRoutes)
