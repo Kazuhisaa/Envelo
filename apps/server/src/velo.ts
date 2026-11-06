@@ -123,41 +123,70 @@ veloRoutes.get('/client-payments', async (c) => {
   )
 })
 
+/** Tests swap in a fake Velo client (no network). */
+export const setVeloForTests = (fake: Velo) => (client = fake)
+
+type VerifiedEvent = { id: string; type: string; test: boolean; paymentIntentId?: string; txHash?: string | null }
+
+// The SDK verifies the HMAC first and only then checks the payload shape. Velo's dashboard currently sends a
+// summary payload ({ id, type, test, paymentIntentId, projectId }) that the SDK 1.0.0 shape check rejects, so an
+// "Invalid webhook event" error means the signature already passed. Amount and status always come from Velo's API.
+async function verifyVeloWebhook(raw: string, signature: string): Promise<VerifiedEvent> {
+  try {
+    const e = await Velo.webhooks.verify({ payload: raw, signature, secret: process.env.VELO_WEBHOOK_SECRET ?? '' })
+    const pi = 'paymentIntent' in e ? e.paymentIntent : undefined
+    return { id: e.id, type: e.type, test: e.test, paymentIntentId: pi?.id, txHash: pi?.txHash }
+  } catch (err) {
+    if (!(err instanceof Error) || !err.message.startsWith('Invalid webhook event')) throw err
+    const e = JSON.parse(raw)
+    if (typeof e?.id !== 'string' || typeof e?.type !== 'string') throw err
+    return {
+      id: e.id,
+      type: e.type,
+      test: e.test === true,
+      paymentIntentId: typeof e.paymentIntentId === 'string' ? e.paymentIntentId : e.paymentIntent?.id,
+      txHash: e.paymentIntent?.txHash ?? e.txHash ?? null,
+    }
+  }
+}
+
 // Exempt from the demo passcode: Velo calls it, and the signature check is the guard.
 veloRoutes.post('/webhooks/velo', async (c) => {
   const raw = await c.req.text() // raw, unparsed body: the signature covers these exact bytes
-  let event
+  let event: VerifiedEvent
   try {
-    event = await Velo.webhooks.verify({
-      payload: raw,
-      signature: c.req.header('x-velo-signature') ?? '',
-      secret: process.env.VELO_WEBHOOK_SECRET ?? '',
-    })
+    event = await verifyVeloWebhook(raw, c.req.header('x-velo-signature') ?? '')
   } catch (e) {
-    // The reason (e.g. "Signature mismatch", "Invalid webhook event: …") never contains the secret.
+    // The reason (e.g. "Signature mismatch") never contains the secret.
     const reason = e instanceof Error ? e.message : String(e)
     console.warn(`velo webhook rejected: ${reason}`)
     return c.json({ error: reason }, 400)
   }
 
-  if (event.test || (event.type !== 'payment.succeeded' && event.type !== 'payment.failed')) return c.json({ ok: true })
-  const pi = event.paymentIntent
-
+  if (event.test || !event.paymentIntentId) return c.json({ ok: true })
   if (event.type === 'payment.failed') {
-    await sql`update invoices set status = 'failed' where payment_intent_id = ${pi.id}`
+    await sql`update invoices set status = 'failed' where payment_intent_id = ${event.paymentIntentId}`
     return c.json({ ok: true })
+  }
+  if (event.type !== 'payment.succeeded') return c.json({ ok: true })
+
+  // Velo's API is the source of truth for what was paid.
+  const intent = await velo().paymentIntents.retrieve(event.paymentIntentId)
+  if (intent.status !== 'paid') {
+    console.warn(`payment.succeeded for ${intent.id} but Velo says ${intent.status}; not recorded`)
+    return c.json({ ok: true, recorded: false })
   }
 
   const receivedAt = new Date()
   const [row] = await sql<ClientPaymentRow[]>`
     insert into client_payments (event_id, payment_intent_id, invoice_id, amount_stroops, asset, tx_hash, received_at, period)
     values (
-      ${event.id}, ${pi.id}, (select id from invoices where payment_intent_id = ${pi.id}),
-      ${toStroops(pi.amount).toString()}, ${pi.asset}, ${pi.txHash ?? null}, ${receivedAt}, ${periodOf(receivedAt)}
+      ${event.id}, ${intent.id}, (select id from invoices where payment_intent_id = ${intent.id}),
+      ${toStroops(intent.amount).toString()}, ${intent.asset}, ${event.txHash ?? null}, ${receivedAt}, ${periodOf(receivedAt)}
     )
     on conflict do nothing
     returning *`
-  await sql`update invoices set status = 'paid' where payment_intent_id = ${pi.id}`
+  await sql`update invoices set status = 'paid' where payment_intent_id = ${intent.id}`
   if (row) await onClientPaymentRecorded(row)
   return c.json({ ok: true, recorded: Boolean(row) })
 })

@@ -8,6 +8,10 @@ const SECRET = 'whsec_test'
 const sign = (body: string, secret = SECRET, t = Math.floor(Date.now() / 1000)) =>
   `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${body}`).digest('hex')}`
 
+// The summary payload Velo's dashboard sends today (SDK 1.0.0's shape check rejects it after the HMAC passes).
+const summary = (id: string, intentId = 'pi_1', test = false) =>
+  JSON.stringify({ id, paymentIntentId: intentId, projectId: 'kh7', test, type: 'payment.succeeded' })
+
 const event = (id: string, intentId = 'pi_1') =>
   JSON.stringify({
     version: '1',
@@ -37,7 +41,13 @@ describe.skipIf(!url)('POST /webhooks/velo', () => {
     process.env.VELO_WEBHOOK_SECRET = SECRET
     const db = await import('./db.ts')
     const { createApp } = await import('./app.ts')
-    const { veloRoutes } = await import('./velo.ts')
+    const { veloRoutes, setVeloForTests } = await import('./velo.ts')
+    // Fake Velo API: every intent is paid, 1500 XLM; 'pi_unpaid' is still pending.
+    setVeloForTests({
+      paymentIntents: {
+        retrieve: async (id: string) => ({ id, status: id === 'pi_unpaid' ? 'pending' : 'paid', amount: '1500.0000000', asset: 'native' }),
+      },
+    } as never)
     await db.migrate()
     sql = db.sql
     app = createApp(db.dbOk).route('/', veloRoutes)
@@ -81,5 +91,26 @@ describe.skipIf(!url)('POST /webhooks/velo', () => {
     await post(a, sign(a))
     await post(b, sign(b))
     expect(await count()).toBe(1)
+  })
+
+  test("Velo's summary payload is recorded, with the amount taken from the Velo API", async () => {
+    const body = summary('evt_6', 'pi_summary')
+    expect((await post(body, sign(body))).status).toBe(200)
+    const [row] = await sql`select amount_stroops, payment_intent_id from client_payments`
+    expect(row).toMatchObject({ amount_stroops: '15000000000', payment_intent_id: 'pi_summary' })
+  })
+
+  test('summary payload with a bad signature is still 400', async () => {
+    const body = summary('evt_7')
+    expect((await post(body, sign(body, 'wrong'))).status).toBe(400)
+    expect(await count()).toBe(0)
+  })
+
+  test('not recorded when Velo says the intent is not paid, or the event is a test', async () => {
+    const unpaid = summary('evt_8', 'pi_unpaid')
+    const test = summary('evt_9', 'pi_t', true)
+    expect((await post(unpaid, sign(unpaid))).status).toBe(200)
+    expect((await post(test, sign(test))).status).toBe(200)
+    expect(await count()).toBe(0)
   })
 })
