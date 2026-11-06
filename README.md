@@ -4,7 +4,7 @@ Envelo is the payroll deduction a Filipino freelancer paid by foreign clients do
 
 **Live website:** https://envelo-swart.vercel.app (API: https://enveloserver-production.up.railway.app/health)
 **Demo video (2 min):** _TBD: add link_
-**Team:** _TBD: Name (Discord handle), Name (Discord handle)_
+**Team McDevs:** Jebreil Jhon Blancada (_Discord: TBD_), Christian Jay P. Barcos (_Discord: TBD_), Rain Louie Robles (_Discord: TBD_)
 
 > Demo · not affiliated with SSS, PhilHealth or Pag-IBIG. Stellar Testnet only.
 
@@ -170,6 +170,10 @@ TEST_DATABASE_URL=postgres://... pnpm test   # also runs DB tests (they TRUNCATE
 pnpm lint     # tsc across every package
 pnpm build
 ```
+
+### Demo reset
+
+To start the demo from zero: truncate the app tables (`TRUNCATE remittances, decisions, set_asides, client_payments, invoices RESTART IDENTITY CASCADE;`), then run `pnpm reset:envelopes` to withdraw every envelope's balance back to the owner (`defundEscrow`). On-chain history (the Testnet proof above) is unaffected.
 
 ### Deploy
 
