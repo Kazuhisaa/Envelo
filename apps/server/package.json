@@ -7,7 +7,8 @@
     "start": "tsx --env-file-if-exists=../../.env src/index.ts",
     "build": "tsc",
     "lint": "tsc",
-    "setup:testnet": "tsx --env-file-if-exists=../../.env scripts/setup-testnet.ts"
+    "setup:testnet": "tsx --env-file-if-exists=../../.env scripts/setup-testnet.ts",
+    "reset:envelopes": "tsx --env-file-if-exists=../../.env scripts/empty-envelopes.ts"
   },
   "dependencies": {
     "@carts1024/velo-sdk": "1.0.0",
