@@ -25,23 +25,30 @@ function DashboardContent() {
     retrySetAside,
     retryingId,
   } = useDashboardData()
-  const [clockBusy, setClockBusy] = useState(false)
-  const [clockError, setClockError] = useState('')
+  const [demoBusy, setDemoBusy] = useState('')
+  const [demoError, setDemoError] = useState('')
+  const [demoResult, setDemoResult] = useState('')
 
-  async function moveClock(path: '/agent/fast-forward' | '/agent/reset-clock') {
-    setClockBusy(true)
-    setClockError('')
+  async function runDemo(path: string) {
+    setDemoBusy(path)
+    setDemoError('')
+    setDemoResult('')
     try {
       const res = await api(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(res.status === 401 ? 'Wrong or missing demo passcode' : body.error || `Server returned ${res.status}`)
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(res.status === 401 ? 'Wrong or missing demo passcode' : body.error || `Server returned ${res.status}`)
+      // "Try to break it" answers with the contract's refusal; show it in plain words plus the proof.
+      if (body.message) {
+        setDemoResult(
+          `${body.message} checkPayment: ${body.checkReason ?? 'ok'} · authorizePayment: ${body.contractError ?? 'accepted'} · ` +
+            `escrow ${body.escrowBeforeXlm} → ${body.escrowAfterXlm} XLM${body.fundsMoved ? '' : ' (no funds moved)'}`,
+        )
       }
       await refresh()
     } catch (e) {
-      setClockError(e instanceof Error ? e.message : String(e))
+      setDemoError(e instanceof Error ? e.message : String(e))
     } finally {
-      setClockBusy(false)
+      setDemoBusy('')
     }
   }
 
@@ -75,7 +82,8 @@ function DashboardContent() {
       id: d.id,
       sortAt: d.createdAt,
       at: noteTime(d.createdAt),
-      tag: `${d.agency.toUpperCase()} · ${d.action === 'pay' ? 'REMITTED' : d.action.replace('_', ' ').toUpperCase()}`,
+      tag: `${d.agency.toUpperCase()} · ${d.action === 'pay' ? 'REMITTED' : d.action === 'refused' ? 'REFUSED BY CONTRACT' : d.action.replace('_', ' ').toUpperCase()}`,
+      refused: d.action === 'refused',
       reason: d.reason,
       txHash: claim ? shortHash(claim) : undefined,
       rawTxHash: claim ?? null,
@@ -109,6 +117,7 @@ function DashboardContent() {
       rawTxHash: e.latest!.txHash,
       // Gas Station returns an outer fee-bump hash; direct submission doesn't.
       sponsoredFee: e.latest!.outerTxHash ? (e.latest!.actualFeeStroops ?? '0') : null,
+      refused: false,
       isNow: true,
     }))
 
@@ -207,7 +216,7 @@ function DashboardContent() {
                 </div>
               ) : (
                 notesList.map((note) => (
-                  <div key={note.id} className={`note ${note.isNow ? 'now' : ''}`}>
+                  <div key={note.id} className={`note ${note.isNow ? 'now' : ''} ${note.refused ? 'refused' : ''}`}>
                     <div className="when">
                       <span>{note.at}</span>
                       {note.txHash && (
@@ -297,25 +306,33 @@ function DashboardContent() {
             ? `simulated, ${noteTime(periodData.clockNow)}`
             : 'real time'}
         </p>
-        {clockError && (
+        {demoError && (
           <p className="error-text" role="alert">
-            {clockError}
+            {demoError}
+          </p>
+        )}
+        {demoResult && (
+          <p className="refusal" role="status">
+            {demoResult}
           </p>
         )}
         <div className="acts">
-          <button className="btn ghost" type="button" disabled={clockBusy} onClick={() => moveClock('/agent/fast-forward')}>
+          <button className="btn ghost" type="button" disabled={Boolean(demoBusy)} onClick={() => runDemo('/agent/fast-forward')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
               <path d="M4 6l8 6-8 6zM12 6l8 6-8 6z" />
             </svg>{' '}
-            {clockBusy ? 'Running the agent…' : 'Fast-forward to deadline'}
+            {demoBusy === '/agent/fast-forward' ? 'Running the agent…' : 'Fast-forward to deadline'}
           </button>
           {periodData?.isSimulated && (
-            <button className="btn ghost" type="button" disabled={clockBusy} onClick={() => moveClock('/agent/reset-clock')}>
+            <button className="btn ghost" type="button" disabled={Boolean(demoBusy)} onClick={() => runDemo('/agent/reset-clock')}>
               Reset clock
             </button>
           )}
-          <button className="btn ghost" type="button">
-            Try to break it: pay over cap
+          <button className="btn ghost" type="button" disabled={Boolean(demoBusy)} onClick={() => runDemo('/agent/break/over-cap')}>
+            {demoBusy === '/agent/break/over-cap' ? 'Asking the contract…' : 'Try to break it: pay over the cap'}
+          </button>
+          <button className="btn ghost" type="button" disabled={Boolean(demoBusy)} onClick={() => runDemo('/agent/break/expired')}>
+            {demoBusy === '/agent/break/expired' ? 'Asking the contract…' : "Try to break it: pay last month's envelope"}
           </button>
           <Link className="btn ghost" href="/?sample=loading">
             Try: skeleton loading
