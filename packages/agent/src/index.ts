@@ -1,16 +1,13 @@
 import { AGENCIES, AGENCY_LABEL, type Agency } from '@envelo/shared'
+import type { PrioritizeInput, PrioritizeResult } from './prioritize/types.ts'
+import { SYSTEM_PROMPT, buildUserPrompt } from './prioritize/prompt.ts'
+import { validateAllocation } from './prioritize/schema.ts'
+import { defaultClaudeClient, type ClaudeClient } from './prioritize/claude.ts'
 
-export type PrioritizeInput = {
-  /** PHP centavos this client payment can still set aside. */
-  availableCentavos: number
-  /** What each envelope still needs this period, in centavos. */
-  needed: Record<Agency, number>
-  deadlines: Record<Agency, Date>
-  /** What each envelope already holds for this period, in centavos. */
-  balances: Record<Agency, number>
-  today: Date
-}
-export type PrioritizeResult = { amounts: Record<Agency, number>; reason: string }
+export * from './prioritize/types.ts'
+export * from './prioritize/schema.ts'
+export * from './prioritize/prompt.ts'
+export * from './prioritize/claude.ts'
 
 /** Split `available` in proportion to `needed`, never above a need. Total ≤ available. */
 export function proportionalSplit(availableCentavos: number, needed: Record<Agency, number>): Record<Agency, number> {
@@ -21,13 +18,75 @@ export function proportionalSplit(availableCentavos: number, needed: Record<Agen
   return amounts
 }
 
-/**
- * Called when a client payment can't cover every set-aside.
- */
-export async function prioritizeSetAsides(input: PrioritizeInput): Promise<PrioritizeResult> {
+export type PrioritizeDeps = {
+  client?: ClaudeClient
+  apiKey?: string
+  timeoutMs?: number
+}
+
+function fallbackResult(input: PrioritizeInput, reasonSuffix: string): PrioritizeResult {
   return {
     amounts: proportionalSplit(input.availableCentavos, input.needed),
-    reason: `This client payment couldn't cover all three, so I split it in proportion to what each envelope still needs (${AGENCIES.map((a) => AGENCY_LABEL[a]).join(', ')}).`,
+    reason: `I split it proportionally because ${reasonSuffix} (in proportion to what each envelope still needs).`,
+    source: 'fallback',
+  }
+}
+
+/**
+ * Prioritize set-asides when a client payment cannot cover every needed set-aside.
+ * Queries Claude Sonnet 5.5 for a structured allocation.
+ * If the API call fails, times out, or returns an invalid allocation, falls back to proportional split.
+ */
+export async function prioritizeSetAsides(
+  input: PrioritizeInput,
+  deps: PrioritizeDeps = {},
+): Promise<PrioritizeResult> {
+  const apiKey = deps.apiKey ?? process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    return fallbackResult(input, 'the Claude API key is not configured.')
+  }
+
+  const client = deps.client ?? defaultClaudeClient
+  const timeoutMs = deps.timeoutMs ?? 10_000
+
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+    let raw: unknown
+    try {
+      raw = await client({
+        system: SYSTEM_PROMPT,
+        user: buildUserPrompt(input),
+        apiKey,
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+
+    const validated = validateAllocation(raw, input)
+    if (!validated.ok) {
+      console.warn(`[agent] Allocation validation failed: ${validated.cause}`)
+      return fallbackResult(input, 'the suggested allocation was invalid.')
+    }
+
+    return {
+      amounts: validated.amounts,
+      reason: validated.reason,
+      source: 'claude',
+    }
+  } catch (err: unknown) {
+    const isAbort =
+      (err instanceof Error && err.name === 'AbortError') ||
+      (typeof err === 'object' && err !== null && 'name' in err && (err as { name: string }).name === 'AbortError')
+    if (isAbort) {
+      console.warn(`[agent] Prioritization timed out after ${timeoutMs}ms`)
+      return fallbackResult(input, 'the AI decision timed out.')
+    }
+
+    console.warn('[agent] Error during Claude prioritization:', err)
+    return fallbackResult(input, 'the AI service encountered an error.')
   }
 }
 
@@ -165,7 +224,7 @@ export function applyHardRules(decision: RemittanceDecision, facts: RemittanceFa
   return { decision, blocked: false }
 }
 
-const SYSTEM_PROMPT = `You are Envelo's remittance decision agent. Your job is to decide whether to remit a government contribution for a Filipino freelancer.
+const REMITTANCE_SYSTEM_PROMPT = `You are Envelo's remittance decision agent. Your job is to decide whether to remit a government contribution for a Filipino freelancer.
 You must follow these glossary terms: client payment, set-aside, envelope, remittance, period, deadline, decision. Never refer to an unqualified payment.
 
 Rules:
@@ -205,7 +264,7 @@ export async function decideRemittance(facts: RemittanceFacts, options?: DecideO
   let rawResponse = ''
   try {
     if (options?.caller) {
-      rawResponse = await options.caller(userPrompt, SYSTEM_PROMPT)
+      rawResponse = await options.caller(userPrompt, REMITTANCE_SYSTEM_PROMPT)
     } else {
       if (!apiKey) {
         return fallbackDecision(facts)
@@ -221,7 +280,7 @@ export async function decideRemittance(facts: RemittanceFacts, options?: DecideO
         body: JSON.stringify({
           model: modelName,
           max_tokens: 300,
-          system: SYSTEM_PROMPT,
+          system: REMITTANCE_SYSTEM_PROMPT,
           messages: [{ role: 'user', content: userPrompt }],
         }),
       })

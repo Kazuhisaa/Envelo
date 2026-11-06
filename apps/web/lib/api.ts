@@ -22,3 +22,22 @@ export function api(path: string, init: RequestInit = {}) {
   if (init.method && init.method !== 'GET') headers.set('x-demo-passcode', getPasscode())
   return fetch(SERVER_URL + path, { ...init, headers })
 }
+
+export class ApiError extends Error {
+  status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+export async function readApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await api(path, init)
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    const message = response.status === 401 ? 'Wrong or missing demo passcode' : body.error || `Server returned ${response.status}`
+    throw new ApiError(response.status, message)
+  }
+  return response.json() as Promise<T>
+}
