@@ -204,19 +204,35 @@ To start the demo from zero: truncate the app tables (`TRUNCATE remittances, dec
 
 ## Screenshots
 
-**Dashboard at the start of a period**: client payments received, XLM sealed on-chain in the envelopes (read live from Noir), one card per agency with its contribution rule and deadline.
-
-![Dashboard, new period](docs/screenshots/dashboard-new-period.jpg)
-
-**New invoice**: the freelancer enters the amount in pesos; the page shows what the client pays in XLM and what would be set aside for each agency.
+**1. New invoice.** The freelancer enters the amount in pesos; the page shows what the client pays in XLM and the set-aside it would trigger.
 
 ![New invoice](docs/screenshots/new-invoice.jpg)
 
-**The agent pays through Noir**: the agent key `GCVX…LNY6` invokes `authorize` on Noir's `payment_escrow` contract `CC7E…5BFS` (PhilHealth remittance, 388,333,333 stroops = 38.83 XLM).
+**2. Checkout link ready.** The freelancer sends the Velo checkout link to the client.
+
+![Checkout link ready](docs/screenshots/checkout-link.jpg)
+
+**3. The client pays on Velo checkout** with any Stellar wallet (no Envelo account).
+
+![Velo checkout](docs/screenshots/velo-checkout.jpg)
+
+**4. Set-aside in progress.** Velo's signed webhook arrives; the server seals each contribution into its Noir envelope (`fundEscrow`).
+
+![Set-aside in progress](docs/screenshots/set-aside-sealing.jpg)
+
+**5. Envelopes full.** Each set-aside is a `fundEscrow` transaction with its reason and Stellar Expert link.
+
+![Set-aside done](docs/screenshots/set-aside-done.jpg)
+
+**6. The agent decides and pays.** After "Fast-forward to deadline", Gemini paid PhilHealth (deadline within two days: PAID stamp, receipt and agency account links) and waited on SSS and Pag-IBIG.
+
+![Agent remitted PhilHealth](docs/screenshots/agent-remitted-paid.jpg)
+
+**7. On Stellar Expert: the agent pays through Noir.** The agent key `GCVX…LNY6` invokes `authorize` on Noir's `payment_escrow` contract `CC7E…5BFS`.
 
 ![Agent authorize on the Noir payment_escrow contract](docs/screenshots/agent-authorize-noir.jpg)
 
-**The mock agency collects**: PhilHealth's account `GAY3…IKWK` invokes `claim` on the same contract.
+**8. The mock agency collects.** PhilHealth's account `GAY3…IKWK` invokes `claim` on the same contract.
 
 ![Mock agency claim on the Noir payment_escrow contract](docs/screenshots/agency-claim-noir.jpg)
 
