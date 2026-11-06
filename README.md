@@ -228,11 +228,15 @@ To start the demo from zero: truncate the app tables (`TRUNCATE remittances, dec
 
 ![Agent remitted PhilHealth](docs/screenshots/agent-remitted-paid.jpg)
 
-**7. On Stellar Expert: the agent pays through Noir.** The agent key `GCVX…LNY6` invokes `authorize` on Noir's `payment_escrow` contract `CC7E…5BFS`.
+**7. Try to break it: refused by the contract.** With the AI and the hard rules bypassed on purpose, the agent is forced to pay ₱1,760 from SSS against its ₱760 cap: `checkPayment: over_limit`, `authorizePayment: NoirContractError AgentNotAuthorized`, no funds moved.
+
+![Refused by the contract](docs/screenshots/refused-by-contract.jpg)
+
+**8. On Stellar Expert: the agent pays through Noir.** The agent key `GCVX…LNY6` invokes `authorize` on Noir's `payment_escrow` contract `CC7E…5BFS`.
 
 ![Agent authorize on the Noir payment_escrow contract](docs/screenshots/agent-authorize-noir.jpg)
 
-**8. The mock agency collects.** PhilHealth's account `GAY3…IKWK` invokes `claim` on the same contract.
+**9. The mock agency collects.** PhilHealth's account `GAY3…IKWK` invokes `claim` on the same contract.
 
 ![Mock agency claim on the Noir payment_escrow contract](docs/screenshots/agency-claim-noir.jpg)
 
