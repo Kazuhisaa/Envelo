@@ -10,7 +10,8 @@
     "build": "pnpm -r build",
     "start": "pnpm --filter @envelo/server start",
     "test": "vitest run",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "setup:testnet": "pnpm --filter @envelo/server setup:testnet"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",
