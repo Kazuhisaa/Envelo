@@ -1,0 +1,19 @@
+{
+  "name": "@envelo/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "start": "tsx --env-file-if-exists=../../.env src/index.ts",
+    "build": "tsc",
+    "lint": "tsc"
+  },
+  "dependencies": {
+    "@envelo/agent": "workspace:*",
+    "@envelo/shared": "workspace:*",
+    "@hono/node-server": "^1.19.6",
+    "hono": "^4.13.16",
+    "postgres": "^3.4.7",
+    "tsx": "^4.23.15"
+  }
+}
