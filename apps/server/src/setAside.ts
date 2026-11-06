@@ -15,6 +15,7 @@ import {
   type Period,
 } from '@envelo/shared'
 import { prioritizeSetAsides } from '@envelo/agent'
+import { clock } from './clock.ts'
 import { sql } from './db.ts'
 import type { Chain } from './noir.ts'
 
@@ -120,17 +121,28 @@ export function setAsideRoutes(chain: Chain, reads: Reads) {
   const routes = new Hono()
 
   routes.get('/envelopes', async (c) => {
-    const period = periodOf(new Date())
-    const income = await periodIncome(period)
+    const now = clock.now()
+    const period = periodOf(now)
+    let income = await periodIncome(period)
+    if (income === 0) {
+      income = 25_000_00 // Baseline demo income if no client payments yet
+    }
     const rows = await sql<{ agency: Agency; status: string; php_centavos: number; tx_hash: string | null; reason: string; error: string | null; client_payment_id: string; created_at: Date }[]>`
       select distinct on (agency) agency, status, php_centavos, tx_hash, reason, error, client_payment_id, created_at
       from set_asides where period = ${period} order by agency, created_at desc`
     const funded = await fundedThisPeriod(period)
 
+    let remittances: { agency: Agency; amount_stroops: string; authorize_tx_hash: string; claim_tx_hash: string; created_at: Date }[] = []
+    try {
+      remittances = await sql<{ agency: Agency; amount_stroops: string; authorize_tx_hash: string; claim_tx_hash: string; created_at: Date }[]>`
+        select agency, amount_stroops, authorize_tx_hash, claim_tx_hash, created_at from remittances where period = ${period}`
+    } catch {}
+
     const envelopes = await Promise.all(
       AGENCIES.map(async (a) => {
         const balance = await reads.balance(a).catch(() => null)
         const latest = rows.find((r) => r.agency === a)
+        const rem = remittances.find((r) => r.agency === a)
         return {
           agency: a,
           label: AGENCY_LABEL[a],
@@ -140,6 +152,15 @@ export function setAsideRoutes(chain: Chain, reads: Reads) {
           setAsideCentavos: funded.filter((f) => f.agency === a).reduce((s, f) => s + f.php, 0),
           balanceXlm: balance === null ? null : fromStroops(balance),
           balanceCentavos: balance === null ? null : stroopsToPhp(balance, rate()),
+          remitted: Boolean(rem),
+          remittance: rem ? {
+            amountStroops: rem.amount_stroops,
+            amountXlm: fromStroops(BigInt(rem.amount_stroops)),
+            amountPhpCentavos: stroopsToPhp(BigInt(rem.amount_stroops), rate()),
+            authorizeTxHash: rem.authorize_tx_hash,
+            claimTxHash: rem.claim_tx_hash,
+            createdAt: rem.created_at,
+          } : null,
           latest: latest && {
             status: latest.status,
             amountCentavos: latest.php_centavos,
@@ -163,7 +184,15 @@ export function setAsideRoutes(chain: Chain, reads: Reads) {
       else if (!mine.length && Date.now() - newest.received_at.getTime() < 10 * 60_000) notice = 'Setting aside your contributions…'
     }
 
-    return c.json({ period, incomeCentavos: income, envelopes, notice, failed: envelopes.some((e) => e.latest?.status === 'failed') })
+    return c.json({
+      period,
+      incomeCentavos: income,
+      envelopes,
+      notice,
+      failed: envelopes.some((e) => e.latest?.status === 'failed'),
+      clockNow: now.toISOString(),
+      isSimulated: clock.isSimulated(),
+    })
   })
 
   // Retry a client payment's set-aside after a failure (demo passcode). Never double-funds.

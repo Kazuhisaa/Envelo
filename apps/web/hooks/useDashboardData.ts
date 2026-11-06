@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, readApi } from '../lib/api'
-import type { ClientPayment, Envelopes, Invoice, Loadable } from '../lib/types'
+import type { ClientPayment, Decision, Envelopes, Invoice, Loadable, Remittance } from '../lib/types'
 
 const initial = <T,>(): Loadable<T> => ({ data: null, loading: true, error: null })
 
@@ -10,6 +10,8 @@ export function useDashboardData() {
   const [envelopes, setEnvelopes] = useState<Loadable<Envelopes>>(initial)
   const [invoices, setInvoices] = useState<Loadable<Invoice[]>>(initial)
   const [payments, setPayments] = useState<Loadable<ClientPayment[]>>(initial)
+  const [decisions, setDecisions] = useState<Decision[]>([])
+  const [remittances, setRemittances] = useState<Remittance[]>([])
   const [rate, setRate] = useState<Loadable<string | null>>(initial)
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const [pendingUntil, setPendingUntil] = useState<number | null>(null)
@@ -25,13 +27,18 @@ export function useDashboardData() {
     }
     running.current = true
     try {
-      const [envRes, invRes, payRes] = await Promise.allSettled([
+      const [envRes, invRes, payRes, decRes, remRes] = await Promise.allSettled([
         readApi<Envelopes>('/envelopes'),
         readApi<Invoice[]>('/invoices'),
         readApi<ClientPayment[]>('/client-payments'),
+        readApi<Decision[]>('/agent/decisions'),
+        readApi<Remittance[]>('/agent/remittances'),
       ])
 
       if (active.current) {
+        if (decRes.status === 'fulfilled') setDecisions(decRes.value)
+        if (remRes.status === 'fulfilled') setRemittances(remRes.value)
+
         if (envRes.status === 'fulfilled') {
           setEnvelopes({ data: envRes.value, loading: false, error: null })
         } else {
@@ -124,6 +131,8 @@ export function useDashboardData() {
     envelopes,
     invoices,
     payments,
+    decisions,
+    remittances,
     rate,
     refresh,
     fetchConfig,

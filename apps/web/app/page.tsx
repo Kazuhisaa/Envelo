@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { EnvelopeCard } from '../components/EnvelopeCard'
@@ -8,6 +8,7 @@ import { PeriodSummary } from '../components/PeriodSummary'
 import { SectionState } from '../components/SectionState'
 import { DashboardSkeleton } from '../components/DashboardSkeleton'
 import { useDashboardData } from '../hooks/useDashboardData'
+import { api } from '../lib/api'
 import { explorer } from '../lib/format'
 
 function DashboardContent() {
@@ -18,11 +19,32 @@ function DashboardContent() {
     envelopes,
     invoices,
     payments,
+    decisions,
+    remittances,
     rate,
     refresh,
     retrySetAside,
     retryingId,
   } = useDashboardData()
+  const [clockBusy, setClockBusy] = useState(false)
+  const [clockError, setClockError] = useState('')
+
+  async function moveClock(path: '/agent/fast-forward' | '/agent/reset-clock') {
+    setClockBusy(true)
+    setClockError('')
+    try {
+      const res = await api(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(res.status === 401 ? 'Wrong or missing demo passcode' : body.error || `Server returned ${res.status}`)
+      }
+      await refresh()
+    } catch (e) {
+      setClockError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setClockBusy(false)
+    }
+  }
 
   // 1. Explicit skeleton preview
   if (isSkeletonPreview) {
@@ -37,10 +59,36 @@ function DashboardContent() {
   const periodData = envelopes.data
   const invoiceList = invoices.data ?? []
 
+  const noteTime = (iso: string) =>
+    new Intl.DateTimeFormat('en-PH', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Manila',
+    }).format(new Date(iso))
+  const shortHash = (h: string) => `${h.slice(0, 4)}…${h.slice(-3)}`
+
+  const decisionNotes = decisions.map((d) => {
+    const claim = remittances.find((r) => r.decisionId === d.id)?.claimTxHash
+    return {
+      id: d.id,
+      sortAt: d.createdAt,
+      at: noteTime(d.createdAt),
+      tag: `${d.agency.toUpperCase()} · ${d.action === 'pay' ? 'REMITTED' : d.action.replace('_', ' ').toUpperCase()}`,
+      reason: d.reason,
+      txHash: claim ? shortHash(claim) : undefined,
+      rawTxHash: claim ?? null,
+      isNow: false,
+    }
+  })
+
   const liveNotes = (envelopes.data?.envelopes ?? [])
     .filter((e) => e.latest)
     .map((e) => ({
       id: `${e.agency}-${e.latest!.at}`,
+      sortAt: e.latest!.at,
       at: new Intl.DateTimeFormat('en-PH', {
         month: 'short',
         day: 'numeric',
@@ -62,7 +110,9 @@ function DashboardContent() {
       isNow: true,
     }))
 
-  const notesList = liveNotes
+  const notesList = [...decisionNotes, ...liveNotes]
+    .sort((a, b) => b.sortAt.localeCompare(a.sortAt))
+    .map((n, i) => ({ ...n, isNow: i === 0 }))
   const isEmptyPeriod = Boolean(periodData && periodData.incomeCentavos <= 0)
 
   return (
@@ -235,14 +285,29 @@ function DashboardContent() {
           </svg>{' '}
           Demo controls
         </h2>
-        <p>Controls for the live demo. They need the demo passcode and don't exist for real users.</p>
+        <p>
+          Controls for the live demo. They need the demo passcode and don't exist for real users. Clock:{' '}
+          {periodData?.isSimulated && periodData.clockNow
+            ? `simulated, ${noteTime(periodData.clockNow)}`
+            : 'real time'}
+        </p>
+        {clockError && (
+          <p className="error-text" role="alert">
+            {clockError}
+          </p>
+        )}
         <div className="acts">
-          <button className="btn ghost" type="button">
+          <button className="btn ghost" type="button" disabled={clockBusy} onClick={() => moveClock('/agent/fast-forward')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
               <path d="M4 6l8 6-8 6zM12 6l8 6-8 6z" />
             </svg>{' '}
-            Fast-forward to deadline
+            {clockBusy ? 'Running the agent…' : 'Fast-forward to deadline'}
           </button>
+          {periodData?.isSimulated && (
+            <button className="btn ghost" type="button" disabled={clockBusy} onClick={() => moveClock('/agent/reset-clock')}>
+              Reset clock
+            </button>
+          )}
           <button className="btn ghost" type="button">
             Try to break it: pay over cap
           </button>

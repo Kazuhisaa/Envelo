@@ -30,6 +30,8 @@ export type Envelope = {
   setAsideCentavos: number
   balanceXlm: string | null
   balanceCentavos: number | null
+  remitted?: boolean
+  remittance?: { amountXlm: string; amountPhpCentavos: number | null; authorizeTxHash: string; claimTxHash: string; createdAt: string } | null
   latest?: {
     status: 'funded' | 'failed' | 'refused'
     amountCentavos: number
@@ -47,6 +49,28 @@ export type Envelopes = {
   envelopes: Envelope[]
   notice: string | null
   failed: boolean
+  clockNow?: string
+  isSimulated?: boolean
+}
+
+export type Decision = {
+  id: string
+  agency: Agency
+  period: string
+  action: 'pay' | 'wait' | 'ask_user'
+  amountXlm: string
+  amountPhpCentavos: number | null
+  reason: string
+  model: string
+  createdAt: string
+}
+
+export type Remittance = {
+  id: string
+  agency: Agency
+  claimTxHash: string
+  decisionId: string | null
+  createdAt: string
 }
 
 export type Loadable<T> = { data: T | null; loading: boolean; error: string | null }

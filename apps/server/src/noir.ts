@@ -1,9 +1,10 @@
 // Envelo's Noir side: the owner (freelancer) key signs envelope writes, per ADR-0001.
 import { Asset, Keypair, Networks } from '@stellar/stellar-sdk'
-import { NoirAgentClient, keypairSigner } from '@noirx402/agent-sdk'
+import { NoirAgentClient, NoirContractError, keypairSigner } from '@noirx402/agent-sdk'
 import type { Agency } from '@envelo/shared'
 import { deviceHash } from '@envelo/shared/device'
 
+export { NoirContractError }
 export const noir = new NoirAgentClient()
 export const XLM = Asset.native().contractId(Networks.TESTNET)
 
@@ -13,8 +14,18 @@ const secret = (name: string) => {
   return v
 }
 export const ownerKey = () => Keypair.fromSecret(secret('OWNER_SECRET'))
-export const agentPublicKey = () => Keypair.fromSecret(secret('AGENT_SECRET')).publicKey()
+export const agentKey = () => Keypair.fromSecret(secret('AGENT_SECRET'))
+export const agentPublicKey = () => agentKey().publicKey()
 export const envelopeHash = (agency: Agency) => deviceHash(ownerKey().publicKey(), agency)
+
+export const agencySecretName: Record<Agency, string> = {
+  sss: 'SSS_AGENCY_SECRET',
+  philhealth: 'PHILHEALTH_AGENCY_SECRET',
+  pagibig: 'PAGIBIG_AGENCY_SECRET',
+}
+
+export const agencyKey = (agency: Agency) => Keypair.fromSecret(secret(agencySecretName[agency]))
+export const agencyPublicKey = (agency: Agency) => agencyKey(agency).publicKey()
 
 export const chain = {
   async fund(agency: Agency, stroops: bigint) {
@@ -38,3 +49,10 @@ export const chain = {
   },
 }
 export type Chain = typeof chain
+
+export const remittanceChain = {
+  checkPayment: (p: Parameters<typeof noir.checkPayment>[0]) => noir.checkPayment(p),
+  authorizePayment: (p: Parameters<typeof noir.authorizePayment>[0]) => noir.authorizePayment(p),
+  claim: (p: Parameters<typeof noir.claim>[0]) => noir.claim(p),
+}
+export type RemittanceChain = typeof remittanceChain

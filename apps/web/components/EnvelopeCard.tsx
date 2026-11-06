@@ -19,7 +19,7 @@ export function EnvelopeCard({
     ? Math.min(100, Math.max(0, (100 * e.setAsideCentavos) / e.contributionCentavos))
     : (empty ? 0 : 100)
 
-  const isRemitted = e.latest?.reason?.toLowerCase().includes('remitted') ?? false
+  const isRemitted = e.remitted ?? false
   const isRefused = e.latest?.status === 'refused' || (e.latest?.reason?.toLowerCase().includes('refused') ?? false)
   const isStamped = isRemitted
   const isAttention = !empty && !isRemitted && (e.latest?.status === 'failed' || isRefused || isFull)
@@ -47,7 +47,7 @@ export function EnvelopeCard({
     : 'Filling'
 
   const fillText = isRemitted
-    ? (e.latest?.at ? `Remitted ${date(e.latest.at)}` : 'Remitted')
+    ? (e.remittance ? `Remitted ${date(e.remittance.createdAt)}` : 'Remitted')
     : empty
     ? 'Nothing to seal yet'
     : `${peso(e.setAsideCentavos)} of ${peso(e.contributionCentavos)} sealed`
@@ -80,11 +80,11 @@ export function EnvelopeCard({
 
       <div className="meta">
         <span>
-          {isRemitted && e.latest?.txHash ? (
+          {isRemitted && e.remittance ? (
             <>
               Receipt{' '}
-              <a href={explorer(e.latest.txHash)} target="_blank" rel="noreferrer">
-                {e.latest.txHash.slice(0, 4)}…{e.latest.txHash.slice(-3)}
+              <a href={explorer(e.remittance.claimTxHash)} target="_blank" rel="noreferrer">
+                {e.remittance.claimTxHash.slice(0, 4)}…{e.remittance.claimTxHash.slice(-3)}
               </a>
             </>
           ) : (

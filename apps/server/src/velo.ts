@@ -72,21 +72,37 @@ veloRoutes.post('/invoices', async (c) => {
     return c.json({ error: 'amountXlm (> 0, up to 7 decimals), clientName (1-100 chars) and description (up to 200) are required' }, 400)
   }
 
+  if (!process.env.VELO_API_KEY) {
+    return c.json({ error: 'VELO_API_KEY is not set in .env. Please configure your Velo API key from velo-build.dev' }, 400)
+  }
+
   const web = process.env.WEB_URL ?? 'http://localhost:3000'
-  const intent = await velo().checkout.sessions.create({
-    amount: fromStroops(stroops),
-    asset: 'native',
-    description: `${clientName}: ${description || 'Invoice'}`,
-    successUrl: `${web}/?paid=1`,
-    cancelUrl: `${web}/`,
-  })
+  let intent
+  try {
+    intent = await velo().checkout.sessions.create({
+      amount: fromStroops(stroops),
+      asset: 'native',
+      description: `${clientName}: ${description || 'Invoice'}`,
+      successUrl: `${web}/?paid=1`,
+      cancelUrl: `${web}/`,
+    })
+  } catch (err: any) {
+    console.error('Velo checkout session create error:', err)
+    return c.json({ error: `Velo API error: ${err?.message ?? err}` }, 502)
+  }
+
   if (!intent.checkoutUrl) return c.json({ error: 'Velo returned no checkout URL' }, 502)
 
-  const [row] = await sql<InvoiceRow[]>`
-    insert into invoices (payment_intent_id, client_name, description, amount_stroops, checkout_url, status)
-    values (${intent.paymentIntentId}, ${clientName}, ${description}, ${stroops.toString()}, ${intent.checkoutUrl}, ${intent.status})
-    returning *`
-  return c.json(invoiceJson(row), 201)
+  try {
+    const [row] = await sql<InvoiceRow[]>`
+      insert into invoices (payment_intent_id, client_name, description, amount_stroops, checkout_url, status)
+      values (${intent.paymentIntentId}, ${clientName}, ${description}, ${stroops.toString()}, ${intent.checkoutUrl}, ${intent.status})
+      returning *`
+    return c.json(invoiceJson(row), 201)
+  } catch (err: any) {
+    console.error('Database insert error:', err)
+    return c.json({ error: `Database error: ${err?.message ?? err}. Is Postgres running?` }, 500)
+  }
 })
 
 veloRoutes.get('/invoices', async (c) => {
