@@ -76,6 +76,8 @@ export type TickEnvOptions = {
   period?: Period
   /** This period's income in centavos; read from client_payments when omitted. */
   income?: number
+  /** Collect the agency's claim after recording the remittance instead of before (routes and cron). */
+  backgroundClaim?: boolean
 }
 
 export type DecisionRow = {
@@ -165,14 +167,20 @@ export async function gatherFacts(agency: Agency, options?: TickEnvOptions): Pro
   }
 }
 
-export async function tickEnvelope(agency: Agency, options?: TickEnvOptions) {
+type Decided = { facts: RemittanceFacts; rawDecision: RemittanceDecision }
+
+const decide = async (agency: Agency, options?: TickEnvOptions): Promise<Decided> => {
   const facts = await gatherFacts(agency, options)
+  return { facts, rawDecision: await decideRemittance(facts, { caller: options?.modelCaller }) }
+}
+
+export async function tickEnvelope(agency: Agency, options?: TickEnvOptions, decided?: Decided) {
+  const { facts, rawDecision } = decided ?? (await decide(agency, options))
   const chain = options?.chain ?? remittanceChain
   const database = options?.db ?? sql
   const agentSec = options?.agentSecret ?? process.env.AGENT_SECRET
 
-  // 1. Decision layer (Gemini + fallback)
-  const rawDecision = await decideRemittance(facts, { caller: options?.modelCaller })
+  // 1. Decision layer (Gemini + fallback): done in decide(), in parallel for all envelopes by tickAll.
 
   // 2. Hard rules check (code, after AI, before chain)
   const { decision: hardDecision, blocked, rule } = applyHardRules(rawDecision, facts)
@@ -180,9 +188,10 @@ export async function tickEnvelope(agency: Agency, options?: TickEnvOptions) {
 
   let remittanceResult: {
     authorizeTxHash: string
-    claimTxHash: string
+    claimTxHash: string | null
     nonce: bigint
   } | null = null
+  let claimLater: (() => Promise<{ hash: string }>) | null = null
   let contractError: string | null = null
 
   // 3. Remittance execution if pay
@@ -219,14 +228,12 @@ export async function tickEnvelope(agency: Agency, options?: TickEnvOptions) {
           amount: finalDecision.amount,
         })
 
-        const claim = await chain.claim({
-          merchant: keypairSigner(agencyKey(agency).secret()),
-          token: XLM,
-        })
-
+        // The agent's payment is done at authorize; claim is the agency collecting its pending balance.
+        const claim = () => chain.claim({ merchant: keypairSigner(agencyKey(agency).secret()), token: XLM })
+        if (options?.backgroundClaim) claimLater = claim
         remittanceResult = {
           authorizeTxHash: auth.hash,
-          claimTxHash: claim.hash,
+          claimTxHash: options?.backgroundClaim ? null : (await claim()).hash,
           nonce: auth.nonce,
         }
       } catch (err: any) {
@@ -298,6 +305,14 @@ export async function tickEnvelope(agency: Agency, options?: TickEnvOptions) {
     }
   }
 
+  // 6. The agency collects in the background; its receipt hash lands on the remittance when it confirms.
+  if (claimLater) {
+    const claim = claimLater
+    void claim()
+      .then(({ hash }) => database`update remittances set claim_tx_hash = ${hash} where agency = ${facts.agency} and period = ${facts.period}`)
+      .catch((err) => console.error(`claim for ${agency} failed (the payment stays pending for the agency):`, err))
+  }
+
   return {
     agency,
     facts,
@@ -311,9 +326,11 @@ export async function tickEnvelope(agency: Agency, options?: TickEnvOptions) {
 // Waits for any running set-aside (same queue), so the agent never pays mid cap update.
 export function tickAll(options?: TickEnvOptions) {
   return serialized('agent tick', async () => {
+    // Decide for every envelope at once (independent model calls); pay one at a time (one agent account).
+    const decided = await Promise.all(AGENCIES.map((a) => decide(a, options)))
     const results = []
-    for (const agency of AGENCIES) {
-      results.push(await tickEnvelope(agency, options))
+    for (const [i, agency] of AGENCIES.entries()) {
+      results.push(await tickEnvelope(agency, options, decided[i]))
     }
     return results
   })

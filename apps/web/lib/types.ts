@@ -32,7 +32,7 @@ export type Envelope = {
   balanceCentavos: number | null
   agencyAccount?: string | null
   remitted?: boolean
-  remittance?: { amountXlm: string; amountPhpCentavos: number | null; authorizeTxHash: string; claimTxHash: string; createdAt: string } | null
+  remittance?: { amountXlm: string; amountPhpCentavos: number | null; authorizeTxHash: string; claimTxHash: string | null; createdAt: string } | null
   latest?: {
     status: 'pending' | 'funded' | 'failed'
     amountCentavos: number
@@ -71,7 +71,8 @@ export type Decision = {
 export type Remittance = {
   id: string
   agency: Agency
-  claimTxHash: string
+  claimTxHash: string | null
+  authorizeTxHash: string
   decisionId: string | null
   createdAt: string
 }

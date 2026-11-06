@@ -182,15 +182,21 @@ async function setAside(clientPaymentId: string, chain: Chain) {
       where id = ${row.id}`
   }
 
-  // Each envelope's per-remittance cap = this period's full contribution (what makes over_limit meaningful).
+  // Each envelope's per-remittance cap = the legal maximum contribution for the period, set once per period
+  // (ensureCap is a no-op while the policy already matches). Updating it to the exact contribution on every
+  // client payment cost 6 transactions (~2.5 min) per set-aside. The hard rules still block anything above the
+  // computed contribution; the contract blocks anything above the legal maximum or past the deadline.
   for (const a of AGENCIES) {
     try {
-      await chain.ensureCap(a, phpToStroops(contributionFor(a, income), rate()), deadlineFor(a, cp.period))
+      await chain.ensureCap(a, phpToStroops(contributionFor(a, LEGAL_MAX_INCOME), rate()), deadlineFor(a, cp.period))
     } catch (e) {
       console.error(`cap update ${a} failed:`, e)
     }
   }
 }
+
+// Any income above every agency's ceiling gives the legal maximum contribution.
+const LEGAL_MAX_INCOME = 1_000_000_00
 
 // ponytail: in-process queue, one server instance. Use a Postgres advisory lock if the server scales out.
 // Set-asides and agent ticks share it: a set-aside ends by re-registering each envelope's agent cap

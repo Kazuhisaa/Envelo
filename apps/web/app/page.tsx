@@ -72,7 +72,8 @@ function DashboardContent() {
   const shortHash = (h: string) => `${h.slice(0, 4)}…${h.slice(-3)}`
 
   const decisionNotes = decisions.map((d) => {
-    const claim = remittances.find((r) => r.decisionId === d.id)?.claimTxHash
+    const r = remittances.find((x) => x.decisionId === d.id)
+    const claim = r ? (r.claimTxHash ?? r.authorizeTxHash) : undefined
     return {
       id: d.id,
       sortAt: d.createdAt,

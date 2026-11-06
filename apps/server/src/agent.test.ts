@@ -309,6 +309,22 @@ describe('agent remittance loop (Noir and the model faked)', () => {
     expect(res.decision.reason).toContain('exceeds envelope per-remittance cap')
   })
 
+  test('backgroundClaim records the remittance at authorize and collects the claim right after', async () => {
+    const res = await tickEnvelope('philhealth', {
+      chain: fakeChain,
+      reads: fakeReads,
+      modelCaller: async () => JSON.stringify({ action: 'pay', reason: 'Deadline is near.' }),
+      db: fakeSql,
+      income: 25_000_00,
+      backgroundClaim: true,
+    })
+    expect(authorizeCalls.length).toBe(1)
+    expect(res.remittance?.claimTxHash).toBeNull() // recorded before the agency collects
+    expect(remittancesDb[0].claim_tx_hash).toBeNull()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(claimCalls.length).toBe(1) // the claim still happens, just after
+  })
+
   test('fast-forward sets clock to just before deadline and processes all envelopes', async () => {
     const opts: TickEnvOptions = {
       chain: fakeChain,

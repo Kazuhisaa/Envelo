@@ -82,8 +82,9 @@ export function EnvelopeCard({
           {isRemitted && e.remittance ? (
             <>
               Receipt{' '}
-              <a href={explorer(e.remittance.claimTxHash)} target="_blank" rel="noreferrer">
-                {e.remittance.claimTxHash.slice(0, 4)}…{e.remittance.claimTxHash.slice(-3)}
+              {/* The agency's claim lands a few seconds after the agent's authorize; link whichever exists. */}
+              <a href={explorer(e.remittance.claimTxHash ?? e.remittance.authorizeTxHash)} target="_blank" rel="noreferrer">
+                {(e.remittance.claimTxHash ?? e.remittance.authorizeTxHash).slice(0, 4)}…{(e.remittance.claimTxHash ?? e.remittance.authorizeTxHash).slice(-3)}
               </a>
               {e.agencyAccount && (
                 <>
