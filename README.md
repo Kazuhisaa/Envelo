@@ -30,7 +30,15 @@ _TBD_
 
 ## Velo integration
 
-_TBD_
+Envelo uses the `@carts1024/velo-sdk` (v1.0.0, Testnet) across the full payment lifecycle:
+
+1. **Invoicing & Checkout**: Freelancers generate invoice payment links via `velo.checkout.sessions.create` in [`apps/server/src/velo.ts`](apps/server/src/velo.ts).
+2. **Webhook Verification**: Inbound `payment.succeeded` events are verified using `Velo.webhooks.verify` over raw byte payloads to trigger contribution calculations and set-asides.
+3. **Velo Gas Station (Fee Sponsorship)**: For owner-signed Noir operations (`fundEscrow`, `registerAgent`), Envelo prepares the transaction via `noir.prepare`, signs with the owner key, and sponsors the network fee using `velo.gas.sponsorAndSubmit` in [`apps/server/src/gas.ts`](apps/server/src/gas.ts) and [`apps/server/src/noir.ts`](apps/server/src/noir.ts).
+   - **Zero fee deduction**: The owner account's XLM balance drops only by the funded contribution amount, while Velo sponsors the Stellar network fee (visible as a fee-bump transaction on Stellar Expert).
+   - **Feature Flag**: Controlled by `USE_GAS_STATION` so the demo can toggle between sponsored transactions and direct RPC submission instantly.
+   - **Idempotency & Timeout Recovery**: Uses a stable idempotency key (`setaside:<setAsideId>`). In the event of a network timeout, Envelo recovers the reservation status via `velo.gas.getStatus` / `velo.gas.waitForResult` without ever re-signing or resubmitting a duplicate transaction.
+   - **Audit Trail**: The outer fee-bump hash, inner transaction hash, and actual network fee are recorded on the set-aside record in [`apps/server/src/setAside.ts`](apps/server/src/setAside.ts).
 
 ## Testnet proof
 
@@ -129,6 +137,9 @@ pnpm build
 | `SSS_AGENCY_SECRET`, `PHILHEALTH_AGENCY_SECRET`, `PAGIBIG_AGENCY_SECRET` | server | **yes** | Mock agency accounts. Written by `pnpm setup:testnet` |
 | `VELO_API_KEY` | server | for checkout | Velo Testnet API key |
 | `VELO_WEBHOOK_SECRET` | server | for webhook | Signing secret for `/webhooks/velo` |
+| `USE_GAS_STATION` | server | no | Feature flag (`true`/`false`) for Velo Gas Station fee sponsorship. Default `false` |
+| `VELO_GAS_API_KEY` | server | for gas | Velo Gas Station Testnet API key (`tg_test_...`) |
+| `VELO_GAS_BASE_URL` | server | no | Gas Station endpoint. Default `https://www.velo-build.dev` |
 | `ANTHROPIC_API_KEY` | server (agent) | for agent | Claude API key |
 | `XLM_PHP_RATE` | server | **yes** | PHP value of 1 XLM, e.g. `15.00` |
 | `WEB_URL` | server | no | Velo checkout redirects. Default `http://localhost:3000` |

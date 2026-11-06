@@ -32,7 +32,17 @@ type Envelope = {
   setAsideCentavos: number
   balanceXlm: string | null
   balanceCentavos: number | null
-  latest?: { status: string; amountCentavos: number; txHash: string | null; reason: string; error: string | null; clientPaymentId: string }
+  latest?: {
+    status: string
+    amountCentavos: number
+    txHash: string | null
+    outerTxHash?: string | null
+    innerTxHash?: string | null
+    actualFeeStroops?: string | null
+    reason: string
+    error: string | null
+    clientPaymentId: string
+  }
 }
 type Envelopes = { period: string; incomeCentavos: number; envelopes: Envelope[]; notice: string | null; failed: boolean }
 
@@ -88,8 +98,8 @@ export default function Dashboard() {
     setError('')
     try {
       const res = await api('/invoices', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(form) })
-      const body = await res.json()
-      if (!res.ok) throw new Error(res.status === 401 ? 'Wrong or missing demo passcode' : body.error)
+      const body = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(res.status === 401 ? 'Wrong or missing demo passcode' : body?.error ?? `Server error (${res.status})`)
       setForm({ clientName: '', amountXlm: '', description: '' })
       await load()
     } catch (e) {
@@ -164,6 +174,23 @@ export default function Dashboard() {
                       <a href={`https://stellar.expert/explorer/testnet/tx/${e.latest.txHash}`} target="_blank" rel="noreferrer">
                         tx
                       </a>
+                    )}
+                    {e.latest.outerTxHash && (
+                      <span
+                        title={`Fee sponsored by Velo Gas Station (actual fee: ${e.latest.actualFeeStroops ?? 0} stroops)`}
+                        style={{
+                          fontSize: '0.75rem',
+                          background: '#e6f4ea',
+                          color: '#137333',
+                          border: '1px solid #ceead6',
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          marginLeft: 6,
+                          fontWeight: 500,
+                        }}
+                      >
+                        ⚡ Sponsored by Velo Gas
+                      </span>
                     )}
                     {e.latest.status === 'failed' && (
                       <button type="button" onClick={() => retrySetAside(e.latest!.clientPaymentId)} style={{ marginLeft: 8 }}>

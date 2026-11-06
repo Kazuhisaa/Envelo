@@ -26,5 +26,10 @@ export function createApp(dbOk: () => Promise<boolean>) {
     return c.json(body)
   })
 
+  app.onError((err, c) => {
+    console.error('Unhandled server error:', err)
+    return c.json({ error: err instanceof Error ? err.message : String(err) }, 500)
+  })
+
   return app
 }

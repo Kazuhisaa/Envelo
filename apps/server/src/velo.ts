@@ -72,6 +72,10 @@ veloRoutes.post('/invoices', async (c) => {
     return c.json({ error: 'amountXlm (> 0, up to 7 decimals), clientName (1-100 chars) and description (up to 200) are required' }, 400)
   }
 
+  if (!process.env.VELO_API_KEY) {
+    return c.json({ error: 'VELO_API_KEY is not set in .env. Obtain a Testnet API key from https://velo-build.dev.' }, 500)
+  }
+
   const web = process.env.WEB_URL ?? 'http://localhost:3000'
   const intent = await velo().checkout.sessions.create({
     amount: fromStroops(stroops),

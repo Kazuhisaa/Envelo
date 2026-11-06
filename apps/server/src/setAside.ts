@@ -17,6 +17,7 @@ import {
 import { prioritizeSetAsides } from '@envelo/agent'
 import { sql } from './db.ts'
 import type { Chain } from './noir.ts'
+import { recoverGasOp } from './gas.ts'
 
 const rate = () => {
   const r = process.env.XLM_PHP_RATE
@@ -77,23 +78,107 @@ async function setAside(clientPaymentId: string, chain: Chain) {
     if (php <= 0) continue
     const stroops = phpToStroops(php, rate())
     const reason = `Set aside ${formatPeso(php)} for ${AGENCY_LABEL[a]} toward this period's ${formatPeso(contributionFor(a, income))}: ${contributionRule(a, income)}.${why ? ` ${why}` : ''}`
+
+    // Insert or find the row first to obtain a stable setAsideId for the idempotency key.
+    const [existing] = await sql<
+      {
+        id: string
+        status: string
+        gas_request_id: string | null
+        inner_tx_hash: string | null
+      }[]
+    >`
+      select id, status, gas_request_id, inner_tx_hash from set_asides
+      where client_payment_id = ${cp.id} and agency = ${a}`
+
+    let row = existing
+    if (!row) {
+      const [inserted] = await sql<
+        {
+          id: string
+          status: string
+          gas_request_id: string | null
+          inner_tx_hash: string | null
+        }[]
+      >`
+        insert into set_asides (client_payment_id, agency, period, php_centavos, stroops, status, reason)
+        values (${cp.id}, ${a}, ${cp.period}, ${php}, ${stroops.toString()}, 'failed', ${reason})
+        returning id, status, gas_request_id, inner_tx_hash`
+      row = inserted
+    }
+
+    if (row.status === 'funded') {
+      continue
+    }
+
+    // If previously attempted with Gas Station and has an identity, recover without re-signing or resubmitting:
+    if (row.gas_request_id && row.inner_tx_hash) {
+      try {
+        const recovered = await recoverGasOp({
+          requestId: row.gas_request_id,
+          transactionHash: row.inner_tx_hash,
+        })
+        if (recovered?.status === 'succeeded') {
+          await sql`
+            update set_asides set
+              status = 'funded',
+              tx_hash = ${recovered.outerTransactionHash ?? recovered.transactionHash},
+              outer_tx_hash = ${recovered.outerTransactionHash},
+              inner_tx_hash = ${recovered.transactionHash},
+              actual_fee_stroops = ${recovered.actualFeeStroops ?? null},
+              error = null
+            where id = ${row.id}`
+          continue
+        }
+      } catch (e) {
+        console.warn(`recovery for set-aside ${row.id} did not succeed:`, e)
+      }
+    }
+
     let status: 'funded' | 'failed' = 'funded'
     let txHash: string | null = null
+    let outerTxHash: string | null = null
+    let innerTxHash: string | null = null
+    let actualFeeStroops: string | null = null
+    let gasRequestId: string | null = null
     let error: string | null = null
+
     try {
-      txHash = await chain.fund(a, stroops)
+      const fundRes = await chain.fund(a, stroops, {
+        idempotencyKey: `setaside:${row.id}`,
+        correlationId: `setaside:${row.id}`,
+        setAsideId: row.id,
+      })
+      if (typeof fundRes === 'string') {
+        txHash = fundRes
+        innerTxHash = fundRes
+      } else if (fundRes) {
+        txHash = fundRes.hash
+        outerTxHash = fundRes.outerTxHash ?? null
+        innerTxHash = fundRes.innerTxHash ?? null
+        actualFeeStroops = fundRes.actualFeeStroops ?? null
+        gasRequestId = fundRes.requestId ?? null
+      }
     } catch (e) {
       status = 'failed'
       error = e instanceof Error ? e.message : String(e)
       console.error(`fundEscrow ${a} failed: ${error}`)
     }
+
     await sql`
-      insert into set_asides (client_payment_id, agency, period, php_centavos, stroops, status, tx_hash, reason, error)
-      values (${cp.id}, ${a}, ${cp.period}, ${php}, ${stroops.toString()}, ${status}, ${txHash}, ${reason}, ${error})
-      on conflict (client_payment_id, agency) do update
-        set php_centavos = excluded.php_centavos, stroops = excluded.stroops, status = excluded.status,
-            tx_hash = excluded.tx_hash, reason = excluded.reason, error = excluded.error, created_at = now()
-        where set_asides.status = 'failed'`
+      update set_asides set
+        php_centavos = ${php},
+        stroops = ${stroops.toString()},
+        status = ${status},
+        tx_hash = ${txHash},
+        outer_tx_hash = ${outerTxHash},
+        inner_tx_hash = ${innerTxHash},
+        actual_fee_stroops = ${actualFeeStroops ?? null},
+        gas_request_id = ${gasRequestId},
+        reason = ${reason},
+        error = ${error},
+        created_at = now()
+      where id = ${row.id}`
   }
 
   // Each envelope's per-remittance cap = this period's full contribution (what makes over_limit meaningful).
@@ -122,8 +207,20 @@ export function setAsideRoutes(chain: Chain, reads: Reads) {
   routes.get('/envelopes', async (c) => {
     const period = periodOf(new Date())
     const income = await periodIncome(period)
-    const rows = await sql<{ agency: Agency; status: string; php_centavos: number; tx_hash: string | null; reason: string; error: string | null; client_payment_id: string; created_at: Date }[]>`
-      select distinct on (agency) agency, status, php_centavos, tx_hash, reason, error, client_payment_id, created_at
+    const rows = await sql<{
+      agency: Agency
+      status: string
+      php_centavos: number
+      tx_hash: string | null
+      outer_tx_hash: string | null
+      inner_tx_hash: string | null
+      actual_fee_stroops: string | null
+      reason: string
+      error: string | null
+      client_payment_id: string
+      created_at: Date
+    }[]>`
+      select distinct on (agency) agency, status, php_centavos, tx_hash, outer_tx_hash, inner_tx_hash, actual_fee_stroops, reason, error, client_payment_id, created_at
       from set_asides where period = ${period} order by agency, created_at desc`
     const funded = await fundedThisPeriod(period)
 
@@ -144,6 +241,9 @@ export function setAsideRoutes(chain: Chain, reads: Reads) {
             status: latest.status,
             amountCentavos: latest.php_centavos,
             txHash: latest.tx_hash,
+            outerTxHash: latest.outer_tx_hash ?? null,
+            innerTxHash: latest.inner_tx_hash ?? null,
+            actualFeeStroops: latest.actual_fee_stroops ?? null,
             reason: latest.reason,
             error: latest.error,
             clientPaymentId: latest.client_payment_id,
