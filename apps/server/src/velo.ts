@@ -133,8 +133,11 @@ veloRoutes.post('/webhooks/velo', async (c) => {
       signature: c.req.header('x-velo-signature') ?? '',
       secret: process.env.VELO_WEBHOOK_SECRET ?? '',
     })
-  } catch {
-    return c.json({ error: 'invalid signature' }, 400)
+  } catch (e) {
+    // The reason (e.g. "Signature mismatch", "Invalid webhook event: …") never contains the secret.
+    const reason = e instanceof Error ? e.message : String(e)
+    console.warn(`velo webhook rejected: ${reason}`)
+    return c.json({ error: reason }, 400)
   }
 
   if (event.test || (event.type !== 'payment.succeeded' && event.type !== 'payment.failed')) return c.json({ ok: true })
