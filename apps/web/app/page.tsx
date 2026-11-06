@@ -21,7 +21,6 @@ function DashboardContent() {
     payments,
     decisions,
     remittances,
-    rate,
     refresh,
     retrySetAside,
     retryingId,
@@ -138,7 +137,6 @@ function DashboardContent() {
             <PeriodSummary
               data={periodData}
               paymentCount={payments.data?.length}
-              rate={rate.data}
             />
 
             {/* Empty State Callout when income is 0 */}
@@ -271,7 +269,7 @@ function DashboardContent() {
                   <div key={inv.id} className="inv-row">
                     <span className="who">{inv.clientName}</span>
                     <span className="amt">
-                      {inv.amountPhpCentavos ? `₱${(inv.amountPhpCentavos / 100).toLocaleString('en-PH')}` : `${inv.amountXlm} USDC`}
+                      {inv.amountPhpCentavos ? `₱${(inv.amountPhpCentavos / 100).toLocaleString('en-PH')}` : `${inv.amountXlm} XLM`}
                     </span>
                     <span className="sub">{inv.description || 'Invoice'}</span>
                     <span className={`chip ${inv.status.toLowerCase() === 'paid' ? 'paid' : ''}`}>

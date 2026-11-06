@@ -5,14 +5,10 @@ export const peso = (centavos: number | null) => centavos === null
   : `₱${(centavos / 100).toLocaleString('en-PH', { minimumFractionDigits: centavos % 100 === 0 ? 0 : 2, maximumFractionDigits: 2 })}`
 
 export const xlm = (amount: string) => {
-  const stripped = amount.replace(/\s*(USDC|XLM)\s*/gi, '').trim()
-  return `${stripped || '0'} USDC`
+  const stripped = amount.replace(/\s*XLM\s*/gi, '').trim()
+  return `${stripped || '0'} XLM`
 }
 
-export const usdc = (amount: string) => {
-  const stripped = amount.replace(/\s*(USDC|XLM)\s*/gi, '').trim()
-  return `${stripped || '0'} USDC`
-}
 
 export function month(period: string) {
   const [year, mon] = period.split('-').map(Number)

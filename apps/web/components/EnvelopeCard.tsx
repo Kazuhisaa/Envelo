@@ -1,5 +1,5 @@
 import { contributionRule } from '@envelo/shared'
-import { date, deadlineLabel, explorer, peso, usdc } from '../lib/format'
+import { date, deadlineLabel, explorer, peso } from '../lib/format'
 import type { Envelope } from '../lib/types'
 
 export function EnvelopeCard({
@@ -63,7 +63,6 @@ export function EnvelopeCard({
         </div>
         <div className="amt">
           {peso(e.setAsideCentavos)}
-          <small>{usdc(e.balanceXlm ?? '0')}</small>
         </div>
       </div>
 

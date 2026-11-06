@@ -255,7 +255,7 @@ export function AppHeader({ period }: { period?: string | null }) {
 export function DemoFooter() {
   return (
     <p className="foot">
-      Demo · not affiliated with SSS, PhilHealth or Pag-IBIG · sample data, amounts in PHP at a sample rate of ₱18.50 per USDC on Stellar Testnet
+      Demo · not affiliated with SSS, PhilHealth or Pag-IBIG · Stellar Testnet
     </p>
   )
 }
