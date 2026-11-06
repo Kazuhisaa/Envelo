@@ -20,6 +20,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@carts1024/velo-sdk':
+        specifier: 1.0.0
+        version: 1.0.0
       '@envelo/agent':
         specifier: workspace:*
         version: link:../../packages/agent
@@ -72,6 +75,10 @@ importers:
   packages/shared: {}
 
 packages:
+
+  '@carts1024/velo-sdk@1.0.0':
+    resolution: {integrity: sha512-D7PzUocaepfYfOfGon7pJov9S/83D/WwBdGi5/75hgeMtu1VRQcEb2l447BttIRa3ZGCua8dO05ZMTudHEM/Hg==}
+    engines: {node: '>=22.6.0'}
 
   '@emnapi/runtime@1.11.3':
     resolution: {integrity: sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA==}
@@ -1163,6 +1170,8 @@ packages:
     hasBin: true
 
 snapshots:
+
+  '@carts1024/velo-sdk@1.0.0': {}
 
   '@emnapi/runtime@1.11.3':
     dependencies:
