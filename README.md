@@ -91,7 +91,7 @@ From the live demo on Nov 7, 2026 (same accounts as the live site):
 
 **Agent decisions** (Gemini `gemini-3.5-flash`, after "Fast-forward to deadline"): PhilHealth **pay**, "The envelope holds the full contribution and the deadline is within two days." SSS and Pag-IBIG **wait**, "…since the deadline is still far away…"
 
-**Refused by the contract** ("Try to break it", hard rules bypassed on purpose): paying ₱2,735 from SSS against its ₱1,735 cap → `checkPayment: over_limit`, `authorizePayment: NoirContractError AgentNotAuthorized`, no funds moved. A refused call fails in simulation, so it has no transaction hash; it is recorded in the decision log on the dashboard.
+**Refused by the contract** ("Try to break it", hard rules bypassed on purpose): paying ₱2,735 from SSS against its ₱1,735 cap → `checkPayment: over_limit`, `authorizePayment: NoirContractError AgentNotAuthorized`, no funds moved. A refused call fails in simulation, so it has no transaction hash; it is recorded in the decision log on the dashboard. The expired-envelope attempt (₱15 from last month's SSS envelope) was refused the same way: `checkPayment: expired`, `NoirContractError AgentNotAuthorized`, no funds moved.
 
 **Accounts:** agent [`GCVXITPC…RLNY6`](https://stellar.expert/explorer/testnet/account/GCVXITPC6MOO2VQ7QKNEMIB4IT2YXYSBRUJXVIVZHUIPMVICDDYRLNY6) · envelope owner [`GCB22WNG…BZBSJ7`](https://stellar.expert/explorer/testnet/account/GCB22WNG34MRFT4JFGDP2DI52QG372UV6C7YLNX4LR3Q4MBPYTBZBSJ7) · mock agencies SSS [`GAZEWLJT…GM734`](https://stellar.expert/explorer/testnet/account/GAZEWLJTJZRARH5T4RHKS4IAHZS2FZLY5GICFWG2K26WYY7VWZQGM734), PhilHealth [`GAY3F2DA…BIKWK`](https://stellar.expert/explorer/testnet/account/GAY3F2DAOINXENYNJCJVJZBNOGQTH6TNPCIDLZYYXQNZXXL6Y75BIKWK), Pag-IBIG [`GBMRSQDE…6HERH`](https://stellar.expert/explorer/testnet/account/GBMRSQDEOYQXIULLPUQFX7QPPEVDYWKD5GBH5KCGJQMP4V7NVKP6HERH).
 
@@ -228,7 +228,7 @@ To start the demo from zero: truncate the app tables (`TRUNCATE remittances, dec
 
 ![Agent remitted PhilHealth](docs/screenshots/agent-remitted-paid.jpg)
 
-**7. Try to break it: refused by the contract.** With the AI and the hard rules bypassed on purpose, the agent is forced to pay ₱1,760 from SSS against its ₱760 cap: `checkPayment: over_limit`, `authorizePayment: NoirContractError AgentNotAuthorized`, no funds moved.
+**7. Try to break it: refused by the contract.** With the AI and the hard rules bypassed on purpose, the agent is forced to pay ₱1,760 from SSS against its ₱760 cap: `checkPayment: over_limit`, `authorizePayment: NoirContractError AgentNotAuthorized`, no funds moved. The second button tries ₱15 from last month's expired SSS envelope: `checkPayment: expired`, refused the same way.
 
 ![Refused by the contract](docs/screenshots/refused-by-contract.jpg)
 
