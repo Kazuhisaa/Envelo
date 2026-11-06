@@ -9,7 +9,7 @@
     "dev": "pnpm --parallel --filter @envelo/server --filter @envelo/web dev",
     "build": "pnpm -r build",
     "start": "pnpm --filter @envelo/server start",
-    "test": "vitest run",
+    "test": "vitest run --no-file-parallelism",
     "lint": "pnpm -r lint",
     "setup:testnet": "pnpm --filter @envelo/server setup:testnet"
   },

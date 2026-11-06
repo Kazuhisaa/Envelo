@@ -24,6 +24,18 @@ type ClientPayment = {
   period: string
 }
 
+type Envelope = {
+  agency: string
+  label: string
+  deadline: string
+  contributionCentavos: number
+  setAsideCentavos: number
+  balanceXlm: string | null
+  balanceCentavos: number | null
+  latest?: { status: string; amountCentavos: number; txHash: string | null; reason: string; error: string | null; clientPaymentId: string }
+}
+type Envelopes = { period: string; incomeCentavos: number; envelopes: Envelope[]; notice: string | null; failed: boolean }
+
 const OPEN = ['awaiting_route', 'created', 'pending']
 const peso = (centavos: number | null) =>
   centavos === null ? '' : `₱${(centavos / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -33,6 +45,7 @@ export default function Dashboard() {
   const [rate, setRate] = useState<string | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [payments, setPayments] = useState<ClientPayment[]>([])
+  const [env, setEnv] = useState<Envelopes | null>(null)
   const [passcode, setLocal] = useState('')
   const [form, setForm] = useState({ clientName: '', amountXlm: '', description: '' })
   const [busy, setBusy] = useState(false)
@@ -41,9 +54,14 @@ export default function Dashboard() {
 
   const load = useCallback(async () => {
     try {
-      const [inv, cp] = await Promise.all([api('/invoices').then((r) => r.json()), api('/client-payments').then((r) => r.json())])
+      const [inv, cp, en] = await Promise.all([
+        api('/invoices').then((r) => r.json()),
+        api('/client-payments').then((r) => r.json()),
+        api('/envelopes').then((r) => (r.ok ? r.json() : null)),
+      ])
       setInvoices(inv)
       setPayments(cp)
+      setEnv(en)
     } catch (e) {
       setError(`Server unreachable: ${e}`)
     }
@@ -56,8 +74,8 @@ export default function Dashboard() {
     load()
   }, [load])
 
-  // Poll while an invoice is still waiting for its client payment.
-  const waiting = invoices.some((i) => OPEN.includes(i.status))
+  // Poll while an invoice is still waiting for its client payment, or a set-aside is running.
+  const waiting = invoices.some((i) => OPEN.includes(i.status)) || Boolean(env?.notice?.startsWith('Setting aside'))
   useEffect(() => {
     if (!waiting) return
     const t = setInterval(load, 5000)
@@ -79,6 +97,12 @@ export default function Dashboard() {
     } finally {
       setBusy(false)
     }
+  }
+
+  async function retrySetAside(clientPaymentId: string) {
+    const res = await api(`/client-payments/${clientPaymentId}/set-aside`, { method: 'POST' })
+    setError(res.ok ? '' : res.status === 401 ? 'Wrong or missing demo passcode' : 'Retry failed')
+    if (res.ok) setTimeout(load, 5000)
   }
 
   async function copy(url: string) {
@@ -108,6 +132,49 @@ export default function Dashboard() {
             {newest.amountXlm} XLM {peso(newest.amountPhpCentavos) && `(${peso(newest.amountPhpCentavos)})`}
             {newest.clientName && ` from ${newest.clientName}`}
           </div>
+        </section>
+      )}
+
+      {env && (
+        <section>
+          <h2 style={{ marginBottom: 4 }}>Envelopes · {env.period}</h2>
+          <small>Income this period: {peso(env.incomeCentavos)}</small>
+          {env.notice && (
+            <p role="status" style={{ background: '#f2f7ff', padding: 8, borderRadius: 8 }}>
+              {env.notice}
+            </p>
+          )}
+          <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 12 }}>
+            {env.envelopes.map((e) => (
+              <li key={e.agency} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                  <strong>{e.label}</strong>
+                  <small>Deadline {new Date(e.deadline).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</small>
+                </div>
+                <div>
+                  Set aside {peso(e.setAsideCentavos)} of {peso(e.contributionCentavos)}
+                </div>
+                <small>
+                  In envelope (on chain): {e.balanceXlm === null ? 'unavailable' : `${e.balanceXlm} XLM (${peso(e.balanceCentavos)})`}
+                </small>
+                {e.latest && (
+                  <p style={{ margin: '8px 0 0', color: e.latest.status === 'failed' ? '#b42318' : undefined }}>
+                    {e.latest.status === 'failed' ? `Set-aside failed: ${e.latest.error}` : e.latest.reason}{' '}
+                    {e.latest.txHash && (
+                      <a href={`https://stellar.expert/explorer/testnet/tx/${e.latest.txHash}`} target="_blank" rel="noreferrer">
+                        tx
+                      </a>
+                    )}
+                    {e.latest.status === 'failed' && (
+                      <button type="button" onClick={() => retrySetAside(e.latest!.clientPaymentId)} style={{ marginLeft: 8 }}>
+                        Retry
+                      </button>
+                    )}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

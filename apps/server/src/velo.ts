@@ -45,9 +45,13 @@ const invoiceJson = (r: InvoiceRow) => ({
   createdAt: r.created_at,
 })
 
-/** Hook point for the set-aside (#6). Runs once per newly recorded client payment. */
-export async function onClientPaymentRecorded(payment: ClientPaymentRow) {
+/** Runs once per newly recorded client payment. Set via onClientPayment (index.ts wires the set-aside). */
+let hook: (clientPaymentId: string) => void = () => {}
+export const onClientPayment = (f: (clientPaymentId: string) => void) => (hook = f)
+
+function onClientPaymentRecorded(payment: ClientPaymentRow) {
   console.log(`client payment recorded: ${fromStroops(BigInt(payment.amount_stroops))} XLM, period ${payment.period}`)
+  hook(payment.id) // not awaited: the set-aside takes several Soroban transactions, Velo should get its 200 now
 }
 
 export const veloRoutes = new Hono()
@@ -187,6 +191,6 @@ veloRoutes.post('/webhooks/velo', async (c) => {
     on conflict do nothing
     returning *`
   await sql`update invoices set status = 'paid' where payment_intent_id = ${intent.id}`
-  if (row) await onClientPaymentRecorded(row)
+  if (row) onClientPaymentRecorded(row)
   return c.json({ ok: true, recorded: Boolean(row) })
 })

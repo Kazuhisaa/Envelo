@@ -54,7 +54,7 @@ describe.skipIf(!url)('POST /webhooks/velo', () => {
   })
 
   beforeEach(async () => {
-    await sql`truncate client_payments, invoices restart identity`
+    await sql`truncate set_asides, client_payments, invoices restart identity cascade`
   })
 
   const post = (body: string, signature: string) =>
