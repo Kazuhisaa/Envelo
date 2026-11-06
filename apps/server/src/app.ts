@@ -11,6 +11,11 @@ export function createApp(dbOk: () => Promise<boolean>) {
 
   app.use('*', cors())
 
+  app.onError((err, c) => {
+    console.error('Unhandled server error:', err)
+    return c.json({ error: err instanceof Error ? err.message : String(err) }, 500)
+  })
+
   // Demo passcode guard: every write needs x-demo-passcode. Fails closed if DEMO_PASSCODE is unset.
   app.use('*', async (c, next) => {
     if (c.req.method === 'GET' || c.req.method === 'HEAD' || c.req.method === 'OPTIONS') return next()

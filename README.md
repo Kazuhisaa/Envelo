@@ -42,7 +42,19 @@ Envelo uses the `@carts1024/velo-sdk` (v1.0.0, Testnet) across the full payment 
 
 ## Testnet proof
 
-_TBD_
+Live transactions executed by the Envelo agent on Stellar Testnet through Noir contracts:
+
+- **Agent `authorizePayment` (PhilHealth remittance):**
+  [`93483071f37e48c337c6ee01ffcad920d42896ec8a18bbedde432b15426fdb0c`](https://stellar.expert/explorer/testnet/tx/93483071f37e48c337c6ee01ffcad920d42896ec8a18bbedde432b15426fdb0c)
+- **Mock agency `claim` (PhilHealth remittance collected):**
+  [`169979791d70f14c391fe4b41c7c221569b626c813d4712a2dda5625c0ed3b92`](https://stellar.expert/explorer/testnet/tx/169979791d70f14c391fe4b41c7c221569b626c813d4712a2dda5625c0ed3b92)
+- **Envelope funding (`fundEscrow`):**
+  - SSS: [`f971b4ff3c4470dade695509d7d116610f62f16c28e465138d8043f5b85fb904`](https://stellar.expert/explorer/testnet/tx/f971b4ff3c4470dade695509d7d116610f62f16c28e465138d8043f5b85fb904)
+  - PhilHealth: [`f5dbc4de0e6489d26f157cfb5ec25e49078ca84a248003f3dd903369da3bf9d0`](https://stellar.expert/explorer/testnet/tx/f5dbc4de0e6489d26f157cfb5ec25e49078ca84a248003f3dd903369da3bf9d0)
+  - Pag-IBIG: [`0eaaa2db1e5fd1566977aba1b2fc321c0d605a93718b7a3ec1b6914618d166f0`](https://stellar.expert/explorer/testnet/tx/0eaaa2db1e5fd1566977aba1b2fc321c0d605a93718b7a3ec1b6914618d166f0)
+- **Accounts:**
+  - Owner (Freelancer): [`GDUTVOQVB6HM7CWXPTPLMQJCVLGYI6E55G47IW5PZ3SBQDH3562KTWQ5`](https://stellar.expert/explorer/testnet/account/GDUTVOQVB6HM7CWXPTPLMQJCVLGYI6E55G47IW5PZ3SBQDH3562KTWQ5)
+  - Agent: [`GDZT5Y3XAJVCRKSW2BGOLZE6J2TRHIEP2DBVRYIWRFRM4MLRRZOB7SJC`](https://stellar.expert/explorer/testnet/account/GDZT5Y3XAJVCRKSW2BGOLZE6J2TRHIEP2DBVRYIWRFRM4MLRRZOB7SJC)
 
 ## Repo structure
 
