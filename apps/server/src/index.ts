@@ -5,6 +5,7 @@ import { chain, envelopeHash, noir } from './noir.ts'
 import { runSetAside, setAsideRoutes } from './setAside.ts'
 import { onClientPayment, veloRoutes } from './velo.ts'
 import { agentRoutes, tickAll } from './agent.ts'
+import { refusalRoutes } from './refusal.ts'
 
 await migrate()
 onClientPayment((id) => void runSetAside(id, chain).catch(() => {}))
@@ -14,6 +15,7 @@ const app = createApp(dbOk)
   .route('/', veloRoutes)
   .route('/', setAsideRoutes(chain, reads))
   .route('/', agentRoutes())
+  .route('/', refusalRoutes())
 
 // Daily cron (bonus): runs one tick daily with the real clock
 const ONE_DAY_MS = 24 * 60 * 60 * 1000

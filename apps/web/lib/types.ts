@@ -59,7 +59,7 @@ export type Decision = {
   id: string
   agency: Agency
   period: string
-  action: 'pay' | 'wait' | 'ask_user'
+  action: 'pay' | 'wait' | 'ask_user' | 'refused'
   amountXlm: string
   amountPhpCentavos: number | null
   reason: string

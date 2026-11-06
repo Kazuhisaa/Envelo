@@ -582,6 +582,9 @@ h2.sec small { font-size: 13px; font-weight: 500; color: var(--muted); }
 .note .when a { color: var(--ink-2); display: inline-flex; align-items: center; gap: 4px; text-decoration: underline; }
 .note p { font-size: 15px; line-height: 1.45; }
 .note .tag { font: 700 11px var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.note.refused { border-left: 3px solid var(--red); }
+.note.refused .tag { color: var(--red-ink); }
+.refusal { border-left: 3px solid var(--red); padding: 8px 12px; color: var(--red-ink); font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
 .note.now p {
   background: linear-gradient(transparent 12%, var(--highlight) 12%, var(--highlight) 88%, transparent 88%);
   box-decoration-break: clone;
