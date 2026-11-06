@@ -10,6 +10,7 @@
     "setup:testnet": "tsx --env-file-if-exists=../../.env scripts/setup-testnet.ts"
   },
   "dependencies": {
+    "@carts1024/velo-sdk": "1.0.0",
     "@envelo/agent": "workspace:*",
     "@envelo/shared": "workspace:*",
     "@hono/node-server": "^1.19.6",

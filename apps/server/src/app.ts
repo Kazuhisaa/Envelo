@@ -14,6 +14,7 @@ export function createApp(dbOk: () => Promise<boolean>) {
   // Demo passcode guard: every write needs x-demo-passcode. Fails closed if DEMO_PASSCODE is unset.
   app.use('*', async (c, next) => {
     if (c.req.method === 'GET' || c.req.method === 'HEAD' || c.req.method === 'OPTIONS') return next()
+    if (c.req.path === '/webhooks/velo') return next() // signature-verified instead (velo.ts)
     const expected = process.env.DEMO_PASSCODE
     const given = c.req.header('x-demo-passcode') ?? ''
     if (!expected || !matches(given, expected)) return c.json({ error: 'bad or missing x-demo-passcode' }, 401)
