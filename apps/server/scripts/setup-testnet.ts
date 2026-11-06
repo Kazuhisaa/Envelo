@@ -19,6 +19,11 @@ const ACCOUNTS = {
 // ponytail: placeholder per-remittance cap; the set-aside ticket (#6) sets the real one.
 const PLACEHOLDER_CAP = toStroops('500')
 const EXPIRED_DEMO = { cap: toStroops('100'), fund: toStroops('1'), expiresInMs: 2 * 60_000 }
+const AGENCY_FUNDS: Record<Agency, bigint> = {
+  sss: toStroops('300'),
+  philhealth: toStroops('100'),
+  pagibig: toStroops('50'),
+}
 
 const horizon = new Horizon.Server('https://horizon-testnet.stellar.org')
 const noir = new NoirAgentClient()
@@ -71,9 +76,15 @@ async function ensureEnvelope(p: { owner: Keypair; agent: string; hash: string; 
     console.log(`  ${p.label}: policy already set`)
   }
 
-  if (p.fund && (await noir.getEscrowBalance(p.hash)) === 0n) {
-    const { hash } = await noir.execute(signer, { kind: 'fundEscrow', deviceHash: p.hash, token: xlm, amount: p.fund })
-    console.log(`  ${p.label}: fundEscrow ${txLink(hash)}`)
+  if (p.fund) {
+    const current = await noir.getEscrowBalance(p.hash)
+    if (current < p.fund) {
+      const topUp = p.fund - current
+      const { hash } = await noir.execute(signer, { kind: 'fundEscrow', deviceHash: p.hash, token: xlm, amount: topUp })
+      console.log(`  ${p.label}: fundEscrow ${txLink(hash)}`)
+    } else {
+      console.log(`  ${p.label}: escrow holds ${current} stroops`)
+    }
   }
 }
 
@@ -97,7 +108,15 @@ const envelopes: { label: string; hash: string }[] = []
 for (const agency of AGENCIES) {
   const hash = deviceHash(owner.publicKey(), agency)
   envelopes.push({ label: AGENCY_LABEL[agency], hash })
-  await ensureEnvelope({ owner, agent, hash, label: AGENCY_LABEL[agency], cap: PLACEHOLDER_CAP, expiresAt: deadlineFor(agency, period) })
+  await ensureEnvelope({
+    owner,
+    agent,
+    hash,
+    label: AGENCY_LABEL[agency],
+    cap: PLACEHOLDER_CAP,
+    expiresAt: deadlineFor(agency, period),
+    fund: AGENCY_FUNDS[agency],
+  })
 }
 const expiredHash = deviceHash(owner.publicKey(), 'sss' satisfies Agency, 'expired-demo')
 envelopes.push({ label: 'SSS expired demo', hash: expiredHash })
