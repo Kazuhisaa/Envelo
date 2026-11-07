@@ -11,7 +11,6 @@
     "start": "pnpm --filter @envelo/server start",
     "test": "vitest run --no-file-parallelism",
     "lint": "pnpm -r lint",
-    "auth:hash-password": "pnpm --filter @envelo/server auth:hash-password",
     "setup:testnet": "pnpm --filter @envelo/server setup:testnet",
     "reset:envelopes": "pnpm --filter @envelo/server reset:envelopes",
     "check:ai": "pnpm --filter @envelo/server check:ai"

@@ -108,7 +108,9 @@ export function InvoiceForm({ rate, onCreated }: Props) {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        const msg = body.error || `Invoice creation failed (Status ${res.status})`
+        const msg = res.status === 401
+          ? 'Wrong demo passcode. Sign out and log in with the demo passcode as the password.'
+          : (body.error || `Invoice creation failed (Status ${res.status})`)
         throw new Error(msg)
       }
 
