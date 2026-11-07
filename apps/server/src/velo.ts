@@ -170,7 +170,7 @@ async function verifyVeloWebhook(raw: string, signature: string): Promise<Verifi
   }
 }
 
-// Exempt from the demo passcode: Velo calls it, and the signature check is the guard.
+// Exempt from browser authentication: Velo calls it, and the signature check is the guard.
 veloRoutes.post('/webhooks/velo', async (c) => {
   const raw = await c.req.text() // raw, unparsed body: the signature covers these exact bytes
   let event: VerifiedEvent

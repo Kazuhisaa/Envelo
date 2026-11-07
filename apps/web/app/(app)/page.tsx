@@ -3,13 +3,13 @@
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { EnvelopeCard } from '../components/EnvelopeCard'
-import { PeriodSummary } from '../components/PeriodSummary'
-import { SectionState } from '../components/SectionState'
-import { DashboardSkeleton } from '../components/DashboardSkeleton'
-import { useDashboardData } from '../hooks/useDashboardData'
-import { api } from '../lib/api'
-import { explorer } from '../lib/format'
+import { EnvelopeCard } from '../../components/EnvelopeCard'
+import { PeriodSummary } from '../../components/PeriodSummary'
+import { SectionState } from '../../components/SectionState'
+import { DashboardSkeleton } from '../../components/DashboardSkeleton'
+import { useDashboardData } from '../../hooks/useDashboardData'
+import { api } from '../../lib/api'
+import { explorer } from '../../lib/format'
 
 function DashboardContent() {
   const searchParams = useSearchParams()
@@ -36,7 +36,7 @@ function DashboardContent() {
     try {
       const res = await api(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
       const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(res.status === 401 ? 'Wrong or missing demo passcode' : body.error || `Server returned ${res.status}`)
+      if (!res.ok) throw new Error(body.error || `Server returned ${res.status}`)
       // "Try to break it" answers with the contract's refusal; show it in plain words plus the proof.
       if (body.message) {
         setDemoResult(
@@ -52,13 +52,13 @@ function DashboardContent() {
     }
   }
 
-  // 1. Explicit skeleton preview
-  if (isSkeletonPreview) {
-    return <DashboardSkeleton isPreview={true} />
-  }
-
   const periodData = envelopes.data
   const invoiceList = invoices.data ?? []
+
+  // 1. Initial page load or explicit skeleton preview (?sample=loading / ?sample=skeleton)
+  if (isSkeletonPreview || (envelopes.loading && !periodData && !envelopes.error)) {
+    return <DashboardSkeleton isPreview={isSkeletonPreview} />
+  }
 
   const noteTime = (iso: string) =>
     new Intl.DateTimeFormat('en-PH', {
@@ -201,7 +201,33 @@ function DashboardContent() {
           {envelopes.error && notesList.length === 0 ? (
             <SectionState kind="error" message={`Failed to load agent decisions: ${envelopes.error}`} retry={refresh} />
           ) : envelopes.loading && notesList.length === 0 ? (
-            <SectionState kind="loading" message="Loading agent decisions…" />
+            <div className="notes" aria-busy="true">
+              <div className="note">
+                <div className="when">
+                  <span className="skel" style={{ width: '92px', height: '12px' }} />
+                  <span className="skel" style={{ width: '56px', height: '12px' }} />
+                </div>
+                <span className="tag" style={{ borderColor: 'transparent', padding: 0 }}>
+                  <span className="skel" style={{ width: '64px', height: '18px', borderRadius: '4px' }} />
+                </span>
+                <p style={{ marginTop: '8px' }}>
+                  <span className="skel" style={{ width: '92%', height: '13px', display: 'block', marginBottom: '6px' }} />
+                  <span className="skel" style={{ width: '60%', height: '13px', display: 'block' }} />
+                </p>
+              </div>
+              <div className="note">
+                <div className="when">
+                  <span className="skel" style={{ width: '84px', height: '12px' }} />
+                </div>
+                <span className="tag" style={{ borderColor: 'transparent', padding: 0 }}>
+                  <span className="skel" style={{ width: '58px', height: '18px', borderRadius: '4px' }} />
+                </span>
+                <p style={{ marginTop: '8px' }}>
+                  <span className="skel" style={{ width: '96%', height: '13px', display: 'block', marginBottom: '6px' }} />
+                  <span className="skel" style={{ width: '78%', height: '13px', display: 'block' }} />
+                </p>
+              </div>
+            </div>
           ) : (
             <div className="notes">
               {notesList.length === 0 ? (
@@ -260,7 +286,28 @@ function DashboardContent() {
           {invoices.error && invoiceList.length === 0 ? (
             <SectionState kind="error" message={`Failed to load invoices: ${invoices.error}`} retry={refresh} />
           ) : invoices.loading && invoiceList.length === 0 ? (
-            <SectionState kind="loading" message="Loading invoices…" />
+            <div className="inv" aria-busy="true">
+              {[
+                { whoW: '115px', subW: '150px', amtW: '68px' },
+                { whoW: '100px', subW: '165px', amtW: '76px' },
+                { whoW: '125px', subW: '140px', amtW: '72px' },
+              ].map((row, idx) => (
+                <div key={idx} className="inv-row">
+                  <span className="who">
+                    <span className="skel" style={{ width: row.whoW, height: '15px' }} />
+                  </span>
+                  <span className="amt">
+                    <span className="skel" style={{ width: row.amtW, height: '15px' }} />
+                  </span>
+                  <span className="sub">
+                    <span className="skel" style={{ width: row.subW, height: '13px' }} />
+                  </span>
+                  <span className="chip" style={{ borderColor: 'transparent', padding: 0 }}>
+                    <span className="skel" style={{ width: '42px', height: '18px', borderRadius: '4px' }} />
+                  </span>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="inv">
               {invoiceList.length === 0 ? (
@@ -297,7 +344,7 @@ function DashboardContent() {
           Demo controls
         </h2>
         <p>
-          Controls for the live demo. They need the demo passcode and don't exist for real users. Clock:{' '}
+          Controls for the authenticated live demo. They don't exist for real users. Clock:{' '}
           {periodData?.isSimulated && periodData.clockNow
             ? `simulated, ${noteTime(periodData.clockNow)}`
             : 'real time'}
@@ -330,9 +377,7 @@ function DashboardContent() {
           <button className="btn ghost" type="button" disabled={Boolean(demoBusy)} onClick={() => runDemo('/agent/break/expired')}>
             {demoBusy === '/agent/break/expired' ? 'Asking the contract…' : "Try to break it: pay last month's envelope"}
           </button>
-          <Link className="btn ghost" href="/?sample=loading">
-            Try: skeleton loading
-          </Link>
+
         </div>
       </section>
     </main>
