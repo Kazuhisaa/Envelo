@@ -162,7 +162,7 @@ Velo has to reach `POST /webhooks/velo` from the internet. Expose the server wit
 
 Every non-GET request except the Velo webhook needs the `x-demo-passcode: <DEMO_PASSCODE>` header. If `DEMO_PASSCODE` is unset, every write is rejected.
 
-The `/login` page is a mock: there are no accounts. Any email signs in, and the password is saved in the browser and sent as that header, so only the real `DEMO_PASSCODE` can make changes.
+The `/login` page is a mock: there are no accounts. Any email signs in, and the password is saved in the browser and sent as that header, so only the real `DEMO_PASSCODE` can make changes. The "Use Demo Account" button signs in with `NEXT_PUBLIC_DEMO_PASSCODE`.
 
 ### Tests, lint, build
 
@@ -203,6 +203,7 @@ To start the demo from zero: truncate the app tables (`TRUNCATE remittances, dec
 | `XLM_PHP_RATE` | server | **yes** | PHP value of 1 XLM, e.g. `15.00` |
 | `WEB_URL` | server | no | Velo checkout redirects. Default `http://localhost:3000` |
 | `NEXT_PUBLIC_SERVER_URL` | web | no | API base URL. Default `http://localhost:8787` |
+| `NEXT_PUBLIC_DEMO_PASSCODE` | web | no | Used by the login page's "Use Demo Account" button. Set it to `DEMO_PASSCODE` so judges can make changes. It is visible in the browser bundle |
 
 ## Screenshots
 
