@@ -7,7 +7,6 @@
     "start": "tsx --env-file-if-exists=../../.env src/index.ts",
     "build": "tsc",
     "lint": "tsc",
-    "auth:hash-password": "tsx scripts/hash-password.ts",
     "setup:testnet": "tsx --env-file-if-exists=../../.env scripts/setup-testnet.ts",
     "reset:envelopes": "tsx --env-file-if-exists=../../.env scripts/empty-envelopes.ts",
     "check:ai": "tsx --env-file-if-exists=../../.env scripts/check-ai.ts"

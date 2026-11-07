@@ -4,7 +4,7 @@ import { createApp } from './app.ts'
 const app = createApp(async () => true)
 
 beforeEach(() => {
-  process.env.WEB_URL = 'http://localhost:3000'
+  process.env.DEMO_PASSCODE = 'letmein'
 })
 
 test('GET /health is public', async () => {
@@ -13,19 +13,17 @@ test('GET /health is public', async () => {
   expect(await res.json()).toMatchObject({ ok: true, db: true })
 })
 
-test('application reads and writes require a session', async () => {
-  expect((await app.request('/anything')).status).toBe(401)
+test('POST without passcode is 401', async () => {
   expect((await app.request('/anything', { method: 'POST' })).status).toBe(401)
-  expect((await app.request('/auth/session')).status).toBe(401)
+  expect((await app.request('/anything', { method: 'POST', headers: { 'x-demo-passcode': 'nope' } })).status).toBe(401)
 })
 
-test('login requires the configured web origin', async () => {
-  const request = { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }
-  expect((await app.request('/auth/login', request)).status).toBe(403)
-  expect((await app.request('/auth/login', { ...request, headers: { ...request.headers, origin: 'https://evil.example' } })).status).toBe(403)
+test('POST with passcode passes the guard', async () => {
+  const res = await app.request('/anything', { method: 'POST', headers: { 'x-demo-passcode': 'letmein' } })
+  expect(res.status).toBe(404) // no route yet, but the guard let it through
 })
 
-test('the Velo webhook bypasses browser auth and origin checks', async () => {
-  const res = await app.request('/webhooks/velo', { method: 'POST' })
-  expect(res.status).toBe(404)
+test('guard fails closed when DEMO_PASSCODE is unset', async () => {
+  delete process.env.DEMO_PASSCODE
+  expect((await app.request('/anything', { method: 'POST', headers: { 'x-demo-passcode': '' } })).status).toBe(401)
 })

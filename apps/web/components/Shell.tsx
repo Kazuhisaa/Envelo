@@ -8,7 +8,7 @@ import { BrandLogo } from './BrandLogo'
 
 function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
   const activePeriod = serverPeriod ?? '2026-11'
-  const { user, logout, loggingOut } = useAuth()
+  const { user, logout } = useAuth()
 
   const [period, setPeriod] = useState<string>(activePeriod)
   const [periodOpen, setPeriodOpen] = useState(false)
@@ -189,8 +189,8 @@ function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
               style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0 }}
             >
               <p className="account-panel-email">Signed in as <b>{user.email}</b></p>
-              <button className="btn ghost full" type="button" role="menuitem" disabled={loggingOut} onClick={() => void logout()}>
-                {loggingOut ? 'Signing out…' : 'Sign out'}
+              <button className="btn ghost full" type="button" role="menuitem" onClick={logout}>
+                Sign out
               </button>
             </div>
           )}

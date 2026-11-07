@@ -1,8 +1,8 @@
 'use client'
 
-import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Suspense, useEffect, useState, type FormEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { api } from '../../lib/api'
+import { getDemoUser, signIn } from '../../components/AuthProvider'
 import { LoginSkeleton } from '../../components/LoginSkeleton'
 import { BrandLogo } from '../../components/BrandLogo'
 
@@ -17,45 +17,16 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const errorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    let active = true
-    void api('/auth/session').then((response) => {
-      if (!active) return
-      if (response.ok) router.replace(safeNext(searchParams.get('next')))
-      else setChecking(false)
-    }).catch(() => active && setChecking(false))
-    return () => { active = false }
+    if (getDemoUser()) router.replace(safeNext(searchParams.get('next')))
+    else setChecking(false)
   }, [router, searchParams])
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (submitting) return
-    setSubmitting(true)
-    setError('')
-    try {
-      const response = await api('/auth/login', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password, rememberMe }),
-      })
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}))
-        throw new Error(body.error || 'Unable to sign in')
-      }
-      setPassword('')
-      router.replace(safeNext(searchParams.get('next')))
-      router.refresh()
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to sign in')
-      requestAnimationFrame(() => errorRef.current?.focus())
-    } finally {
-      setSubmitting(false)
-    }
+    signIn(email.trim(), password)
+    router.replace(safeNext(searchParams.get('next')))
   }
 
   if (checking) return <LoginSkeleton />
@@ -89,7 +60,7 @@ function LoginForm() {
           <div className="login-form-inner">
             <div className="login-intro">
               <h2 id="login-title" className="login-welcome-title">Welcome Back!</h2>
-              <p className="login-copy">Enter your details below</p>
+              <p className="login-copy">Any email works. Use the demo passcode as the password to make changes.</p>
             </div>
 
             <form className="login-form" onSubmit={submit}>
@@ -139,21 +110,12 @@ function LoginForm() {
                 </div>
               </div>
 
-              <div className="login-options">
-                <label className="remember-option">
-                  <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} />
-                  <span>Remember me</span>
-                </label>
-              </div>
-
-              {error && <div ref={errorRef} className="login-error" role="alert" tabIndex={-1}>{error}</div>}
-
               <button
                 className="btn btn-login-primary"
                 type="submit"
-                disabled={submitting || !email.trim() || !password}
+                disabled={!email.trim() || !password}
               >
-                {submitting ? 'Signing in…' : 'Login Now'}
+                Login Now
               </button>
 
               <small className="login-mobile-disclaimer">

@@ -61,7 +61,7 @@ describe.skipIf(!url)('POST /webhooks/velo', () => {
     app.request('/webhooks/velo', { method: 'POST', body, headers: { 'x-velo-signature': signature } })
   const count = async () => (await sql`select count(*)::int as n from client_payments`)[0].n
 
-  test('records a verified payment.succeeded without a browser session', async () => {
+  test('records a verified payment.succeeded without the demo passcode', async () => {
     const body = event('evt_1')
     const res = await post(body, sign(body))
     expect(res.status).toBe(200)
