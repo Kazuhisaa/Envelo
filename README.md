@@ -3,8 +3,8 @@
 Envelo is the payroll deduction a Filipino freelancer paid by foreign clients doesn't have. When a client payment arrives through Velo checkout, Envelo computes the freelancer's SSS, PhilHealth and Pag-IBIG contributions, sets them aside into three Noir-backed envelopes on Stellar Testnet, and an AI agent remits each one before its deadline. *Your contributions, sealed and delivered.*
 
 **Live website:** https://envelo-swart.vercel.app (API: https://enveloserver-production.up.railway.app/health)
-**Demo video (2 min):** _TBD: add link_
-**Team McDevs:** Jebreil Jhon Blancada (_Discord: TBD_), Christian Jay P. Barcos (_Discord: TBD_), Rain Louie Robles (_Discord: TBD_)
+**Demo video (2 min):** https://drive.google.com/file/d/1uDei10PQdyf0pIF_oymhBIl1rhdbOCK4/view?usp=sharing
+**Team McDevs:** Jebreil Jhon Blancada (jb_jhon3003), Christian Jay P. Barcos (xtiann0299_80455), Rain Louie Robles (Tres5073)
 
 > Demo · not affiliated with SSS, PhilHealth or Pag-IBIG. Stellar Testnet only.
 
@@ -78,7 +78,14 @@ Agent decision logic: [`decideRemittance:248`](https://github.com/Kazuhisaa/Enve
 
 ## Testnet proof
 
-From the live demo on Nov 7, 2026 (same accounts as the live site):
+**Latest run (the one in the demo video), Nov 7, 2026:** a ₱30,000 invoice sealed ₱4,530 SSS, ₱1,500 PhilHealth and ₱400 Pag-IBIG; after "Fast-forward to deadline" the agent paid PhilHealth and waited on the other two.
+
+| Step | Transaction |
+| --- | --- |
+| **Agent `authorizePayment`**, PhilHealth remittance 100 XLM (₱1,500), signed by the agent key `GCVX…RLNY6` | [`58d70561…bd4d`](https://stellar.expert/explorer/testnet/tx/58d70561c300977616772b556826b7b75c6d65b717584638e77526270d1fbd4d) |
+| Mock PhilHealth `claim` | [`26bea7b4…57a0`](https://stellar.expert/explorer/testnet/tx/26bea7b4c596ca11a445e6326f77202e9dbe04c783114c8c88e4699559ba57a0) |
+
+**Earlier run**, same accounts as the live site:
 
 | Step | Transaction |
 | --- | --- |
@@ -185,25 +192,25 @@ To start the demo from zero: truncate the app tables (`TRUNCATE remittances, dec
 
 ## Environment variables
 
-| Variable | Used by | Required | Notes |
-| --- | --- | --- | --- |
-| `PORT` | server | no | Default `8787` |
-| `DATABASE_URL` | server | **yes** | Postgres connection string. The server won't start without it |
-| `DEMO_PASSCODE` | server | **yes** | Required in the `x-demo-passcode` header on writes |
-| `OWNER_SECRET` | server | **yes** | Freelancer's Stellar key. Signs envelope writes (ADR-0001). Written by `pnpm setup:testnet` |
-| `AGENT_SECRET` | server | **yes** | Agent's Stellar key. Written by `pnpm setup:testnet` |
-| `SSS_AGENCY_SECRET`, `PHILHEALTH_AGENCY_SECRET`, `PAGIBIG_AGENCY_SECRET` | server | **yes** | Mock agency accounts. Written by `pnpm setup:testnet` |
-| `VELO_API_KEY` | server | for checkout | Velo Testnet API key |
-| `VELO_WEBHOOK_SECRET` | server | for webhook | Signing secret for `/webhooks/velo` |
-| `USE_GAS_STATION` | server | no | Feature flag (`true`/`false`) for Velo Gas Station fee sponsorship. Default `false` |
-| `VELO_GAS_API_KEY` | server | for gas | Velo Gas Station Testnet API key (`tg_test_...`) |
-| `VELO_GAS_BASE_URL` | server | no | Gas Station endpoint. Default `https://www.velo-build.dev` |
-| `GEMINI_API_KEY` | server (agent) | for agent | Gemini API key (free at aistudio.google.com). Unset = fallback rules |
-| `GEMINI_MODEL` | server (agent) | no | Default `gemini-3.5-flash` (falls back to `gemini-3.5-flash-lite` when busy) |
-| `XLM_PHP_RATE` | server | **yes** | PHP value of 1 XLM, e.g. `15.00` |
-| `WEB_URL` | server | no | Velo checkout redirects. Default `http://localhost:3000` |
-| `NEXT_PUBLIC_SERVER_URL` | web | no | API base URL. Default `http://localhost:8787` |
-| `NEXT_PUBLIC_DEMO_PASSCODE` | web | no | Used by the login page's "Use Demo Account" button. Set it to `DEMO_PASSCODE` so judges can make changes. It is visible in the browser bundle |
+| Name | What it is | Where to get it |
+| --- | --- | --- |
+| `PORT` | Server port (optional, default `8787`) | Any free port |
+| `DATABASE_URL` | Postgres connection string (required) | Local Docker Postgres (see Prerequisites) or Railway Postgres |
+| `DEMO_PASSCODE` | Passcode every write must send in the `x-demo-passcode` header (required) | Pick any value |
+| `OWNER_SECRET` | Freelancer's Stellar key; signs envelope writes (ADR-0001) | Written by `pnpm setup:testnet` (Friendbot-funded) |
+| `AGENT_SECRET` | The agent's own Stellar key; signs `authorizePayment` | Written by `pnpm setup:testnet` |
+| `SSS_AGENCY_SECRET`, `PHILHEALTH_AGENCY_SECRET`, `PAGIBIG_AGENCY_SECRET` | Mock agency accounts that `claim` remittances | Written by `pnpm setup:testnet` |
+| `VELO_API_KEY` | Velo Testnet API key, for checkout and payment status | velo-build.dev dashboard → API keys |
+| `VELO_WEBHOOK_SECRET` | Signing secret that verifies `/webhooks/velo` | velo-build.dev dashboard → Webhooks |
+| `USE_GAS_STATION` | Turns on Velo Gas Station fee sponsorship (`true`/`false`, default `false`) | Your choice |
+| `VELO_GAS_API_KEY` | Velo Gas Station Testnet key (`tg_test_...`) | velo-build.dev dashboard → Gas Station |
+| `VELO_GAS_BASE_URL` | Gas Station endpoint (default `https://www.velo-build.dev`) | Leave the default |
+| `GEMINI_API_KEY` | Key for the agent's decisions; unset = fallback rules | aistudio.google.com (free) |
+| `GEMINI_MODEL` | Model name (default `gemini-3.5-flash`, falls back to `gemini-3.5-flash-lite` when busy) | Leave the default |
+| `XLM_PHP_RATE` | PHP value of 1 XLM, e.g. `15.00` (required) | Your choice; the demo uses `15.00` |
+| `WEB_URL` | Web URL for Velo checkout redirects (default `http://localhost:3000`) | Your Vercel URL in production |
+| `NEXT_PUBLIC_SERVER_URL` | API base URL for the web app (default `http://localhost:8787`) | Your Railway URL in production |
+| `NEXT_PUBLIC_DEMO_PASSCODE` | Passcode used by the "Use Demo Account" button; visible in the browser bundle | Set it to the same value as `DEMO_PASSCODE` |
 
 ## Screenshots
 
