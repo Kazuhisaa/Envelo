@@ -1,26 +1,37 @@
 import type { ReactNode } from 'react'
 import { Public_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
-import { AppHeader, DemoFooter } from '../components/Shell'
 
 const sans = Public_Sans({
   subsets: ['latin'],
-  variable: '--sans',
+  variable: '--font-public-sans',
   display: 'swap',
 })
 
 const mono = JetBrains_Mono({
   subsets: ['latin'],
-  variable: '--mono',
+  variable: '--font-jetbrains-mono',
   display: 'swap',
 })
 
-export const metadata = { title: 'Envelo', description: 'Your contributions, sealed and delivered.' }
+export const metadata = {
+  title: 'Envelo',
+  description: 'Your contributions, sealed and delivered.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico?v=2' },
+      { url: '/icon.png?v=2', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-icon.png?v=2' },
+    ],
+  },
+}
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
-      <body><AppHeader />{children}<DemoFooter /></body>
+      <body>{children}</body>
     </html>
   )
 }

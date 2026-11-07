@@ -305,7 +305,7 @@ export function setAsideRoutes(chain: Chain, reads: Reads) {
     })
   })
 
-  // Retry a client payment's set-aside after a failure (demo passcode). Never double-funds.
+  // Retry a client payment's set-aside after a failure. Authentication is enforced globally. Never double-funds.
   routes.post('/client-payments/:id/set-aside', async (c) => {
     const id = c.req.param('id')
     runSetAside(id, chain).catch(() => {})

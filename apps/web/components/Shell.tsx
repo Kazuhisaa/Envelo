@@ -2,25 +2,24 @@
 
 import Link from 'next/link'
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { getPasscode, setPasscode } from '../lib/api'
 import { month } from '../lib/format'
+import { useAuth } from './AuthProvider'
+import { BrandLogo } from './BrandLogo'
 
 function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
   const activePeriod = serverPeriod ?? '2026-11'
+  const { user, logout, loggingOut } = useAuth()
 
   const [period, setPeriod] = useState<string>(activePeriod)
   const [periodOpen, setPeriodOpen] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [passcode, setLocal] = useState('')
+  const [accountOpen, setAccountOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
   const periodMenuRef = useRef<HTMLDivElement>(null)
   const periodBtnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     setPeriod(serverPeriod ?? '2026-11')
-    setLocal(getPasscode())
   }, [serverPeriod])
 
   const handlePeriodChange = (val: string) => {
@@ -28,13 +27,12 @@ function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
     setPeriodOpen(false)
   }
 
-  // Passcode modal keyboard & click-outside handling
+  // Account menu keyboard & click-outside handling
   useEffect(() => {
-    if (open) {
-      inputRef.current?.focus()
+    if (accountOpen) {
       const onKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
-          setOpen(false)
+          setAccountOpen(false)
           buttonRef.current?.focus()
         }
       }
@@ -45,7 +43,7 @@ function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
           buttonRef.current &&
           !buttonRef.current.contains(e.target as Node)
         ) {
-          setOpen(false)
+          setAccountOpen(false)
         }
       }
       document.addEventListener('keydown', onKeyDown)
@@ -55,7 +53,7 @@ function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
         document.removeEventListener('mousedown', onClickOutside)
       }
     }
-  }, [open])
+  }, [accountOpen])
 
   // Period dropdown keyboard & click-outside handling
   useEffect(() => {
@@ -90,10 +88,7 @@ function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
       <div className="bar-in">
         <div className="mark-group">
           <Link href="/" className="mark" aria-label="Envelo Home">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
-              <rect x="3" y="5.5" width="18" height="13" rx="2" />
-              <path d="M3.5 7l8.5 6 8.5-6" />
-            </svg>{' '}
+            <BrandLogo />
             <span>Envelo</span>
           </Link>
           <span className="tagline">Your contributions, sealed and delivered.</span>
@@ -109,7 +104,10 @@ function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
             aria-label="Select period"
             aria-haspopup="listbox"
             aria-expanded={periodOpen}
-            onClick={() => setPeriodOpen((prev) => !prev)}
+            onClick={() => {
+              setAccountOpen(false)
+              setPeriodOpen((prev) => !prev)
+            }}
           >
             <span>{period === '2026-12' ? 'December 2026' : 'November 2026'}</span>
             <svg
@@ -162,51 +160,42 @@ function HeaderInner({ period: serverPeriod }: { period?: string | null }) {
           )}
         </div>
 
-        <button
-          ref={buttonRef}
-          className={`lock ${open ? 'active' : ''} ${passcode ? 'unlocked' : ''}`}
-          type="button"
-          aria-expanded={open}
-          aria-haspopup="dialog"
-          onClick={() => setOpen(!open)}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            {passcode ? (
-              <>
-                <rect x="5" y="11" width="14" height="9" rx="2" />
-                <path d="M8 11V6a4 4 0 0 1 8 0v2" />
-              </>
-            ) : (
-              <>
-                <rect x="5" y="11" width="14" height="9" rx="2" />
-                <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-              </>
-            )}
-          </svg>{' '}
-          <span className="lock-text-full">{passcode ? 'Demo unlocked' : 'Demo locked'}</span>
-          <span className="lock-text-short">{passcode ? 'Unlocked' : 'Locked'}</span>
-        </button>
-      </div>
-
-      {open && (
-        <div ref={panelRef} className="passcode-panel" role="dialog" aria-label="Demo passcode settings">
-          <label htmlFor="demo-passcode">Demo passcode</label>
-          <input
-            ref={inputRef}
-            id="demo-passcode"
-            className="input"
-            type="password"
-            autoComplete="off"
-            value={passcode}
-            onChange={(e) => {
-              setLocal(e.target.value)
-              setPasscode(e.target.value)
+        <div className="account-menu-wrap" style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            ref={buttonRef}
+            className={`lock account-button ${accountOpen ? 'active' : ''}`}
+            type="button"
+            aria-expanded={accountOpen}
+            aria-haspopup="menu"
+            onClick={() => {
+              setPeriodOpen(false)
+              setAccountOpen((value) => !value)
             }}
-            placeholder="velo"
-          />
-          <p>Required when creating an invoice or retrying a set-aside.</p>
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.5" />
+              <path d="M5 20c.7-4 3-6 7-6s6.3 2 7 6" />
+            </svg>{' '}
+            <span className="lock-text-full account-email">{user.email}</span>
+            <span className="lock-text-short">Account</span>
+          </button>
+
+          {accountOpen && (
+            <div
+              ref={panelRef}
+              className="passcode-panel account-panel"
+              role="menu"
+              aria-label="Account menu"
+              style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0 }}
+            >
+              <p className="account-panel-email">Signed in as <b>{user.email}</b></p>
+              <button className="btn ghost full" type="button" role="menuitem" disabled={loggingOut} onClick={() => void logout()}>
+                {loggingOut ? 'Signing out…' : 'Sign out'}
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </header>
   )
 }
@@ -219,10 +208,7 @@ export function AppHeader({ period }: { period?: string | null }) {
           <div className="bar-in">
             <div className="mark-group">
               <Link href="/" className="mark" aria-label="Envelo Home">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="3" y="5.5" width="18" height="13" rx="2" />
-                  <path d="M3.5 7l8.5 6 8.5-6" />
-                </svg>{' '}
+                <BrandLogo />
                 <span>Envelo</span>
               </Link>
               <span className="tagline">Your contributions, sealed and delivered.</span>
@@ -238,10 +224,10 @@ export function AppHeader({ period }: { period?: string | null }) {
               </div>
               <button className="lock" type="button" disabled>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <rect x="5" y="11" width="14" height="9" rx="2" />
-                  <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                  <circle cx="12" cy="8" r="3.5" />
+                  <path d="M5 20c.7-4 3-6 7-6s6.3 2 7 6" />
                 </svg>{' '}
-                <span>Demo locked</span>
+                <span>Account</span>
               </button>
             </div>
           </header>
