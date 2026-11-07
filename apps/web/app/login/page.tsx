@@ -29,6 +29,12 @@ function LoginForm() {
     router.replace(safeNext(searchParams.get('next')))
   }
 
+  // For judges: signs in with the demo passcode from NEXT_PUBLIC_DEMO_PASSCODE (public in the bundle, testnet only).
+  function signInDemo() {
+    signIn('demo@envelo.ph', process.env.NEXT_PUBLIC_DEMO_PASSCODE ?? '')
+    router.replace(safeNext(searchParams.get('next')))
+  }
+
   if (checking) return <LoginSkeleton />
 
   return (
@@ -116,6 +122,10 @@ function LoginForm() {
                 disabled={!email.trim() || !password}
               >
                 Login Now
+              </button>
+
+              <button className="btn ghost full" type="button" onClick={signInDemo}>
+                Use Demo Account
               </button>
 
               <small className="login-mobile-disclaimer">
